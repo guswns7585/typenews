@@ -1,0 +1,125 @@
+body {
+  margin: 0;
+  padding: 0;
+  font-family: 'Pretendard', 'Noto Sans KR', system-ui, sans-serif;
+  background: linear-gradient(135deg, #f2f3f5 0%, #dce1e6 100%);
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding-top: 80px;
+  color: #222;
+}
+
+.container {
+  backdrop-filter: blur(16px);
+  background-color: rgba(255, 255, 255, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  border-radius: 20px;
+  padding: 40px;
+  width: 90%;
+  max-width: 900px; /* 더 넓게 */
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+}
+
+h1 {
+  font-size: 28px;
+  margin-bottom: 10px;
+  color: #2d2d2d;
+}
+
+.sub {
+  font-size: 14px;
+  color: #666;
+  margin-bottom: 30px;
+}
+
+#sentence {
+  font-size: 20px;
+  letter-spacing: 1px;
+  line-height: 1.8;
+  margin-bottom: 12px;
+  color: #222;
+  white-space: pre-line;
+}
+
+#news-link {
+  margin-bottom: 24px;
+}
+
+#news-link a {
+  text-decoration: none;
+  color: #007aff;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+#sentence span.correct {
+  color: #4caf50;
+  font-weight: bold;
+}
+
+#sentence span.incorrect {
+  color: #f44336;
+  font-weight: bold;
+}
+
+#input {
+  width: 100%;
+  font-size: 18px;
+  padding: 12px 16px;
+  border: 1px solid #ccc;
+  border-radius: 10px;
+  outline: none;
+  margin-bottom: 20px;
+  box-sizing: border-box;
+  background-color: rgba(255, 255, 255, 0.95);
+  transition: border 0.2s ease;
+  resize: none;
+  overflow-y: hidden;
+  min-height: 80px;
+  max-height: 300px; /* 너무 길어지는 것 방지 */
+}
+
+
+#input:focus {
+  border-color: #ff8a65;
+}
+
+button {
+  background-color: rgba(255, 255, 255, 0.4);
+  color: #333;
+  padding: 10px 16px;
+  border: none;
+  border-radius: 8px;
+  margin: 0 6px 12px 0;
+  cursor: pointer;
+  backdrop-filter: blur(10px);
+  transition: background-color 0.2s ease;
+}
+
+button:hover {
+  background-color: rgba(255, 255, 255, 0.6);
+}
+
+.stats {
+  display: flex;
+  justify-content: space-between;
+  font-size: 16px;
+  margin-top: 20px;
+  color: #444;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.news-title {
+  font-weight: bold;
+  font-size: 20px;
+  margin-bottom: 12px;
+}
+
+.news-body {
+  font-size: 18px;
+  color: #444;
+  line-height: 1.8;
+}

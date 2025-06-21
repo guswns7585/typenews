@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Type News</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="container" onclick="document.getElementById('input').focus()">
+    <h1>Type News</h1>
+
+    <div class="lang-switch">
+  <button id="langKor">한국어</button>
+  <button id="langEng">English</button>
+  <button id="langNewsKor">뉴스 (한글)</button>
+  <button id="langNews">뉴스 (영어)</button>
+</div>
+
+    <div id="sentence"></div>
+    <div id="news-link"></div> <!-- 뉴스 기사 링크 영역 -->
+
+    <textarea id="input" placeholder=""></textarea>
+
+
+    <div class="stats">
+      <div>속도: <span id="speed">0 CPM</span></div>
+      <div>정확도: <span id="accuracy">0</span>%</div>
+      <div>완료 문장 수: <span id="count">0</span></div>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
