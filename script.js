@@ -218,7 +218,7 @@ langNewsKorBtn.addEventListener("click", () => {
   currentLang = "kor";
   count = 0;
   countEl.textContent = "0";
-  fetchRSSNews("https://rss.donga.com/total.xml");
+  fetchRSSNews("https://news.sbs.co.kr/news/headlineRssFeed.do");
 });
 
 document.addEventListener("click", () => {
