@@ -174,20 +174,6 @@ inputEl.addEventListener("keydown", (e) => {
   }
 });
 
-// ✅ 기본 모드 버튼
-document.getElementById("langKor").addEventListener("click", () => {
-  currentLang = "kor";
-  count = 0;
-  countEl.textContent = "0";
-  fetchSentences("kor");
-});
-document.getElementById("langEng").addEventListener("click", () => {
-  currentLang = "eng";
-  count = 0;
-  countEl.textContent = "0";
-  fetchSentences("eng");
-});
-
 
 
 // ✅ 섹터별 버튼 처리
