@@ -7,21 +7,36 @@
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
+  <button id="toggle-theme">🌙 다크모드 전환</button>
+
   <div class="container" onclick="document.getElementById('input').focus()">
     <h1>Type News</h1>
 
-    <div class="lang-switch">
+    <!-- 기본 모드 -->
+   <div class="lang-switch">
   <button id="langKor">한국어</button>
   <button id="langEng">English</button>
-  <button id="langNewsKor">뉴스 (한글)</button>
+
+  <div class="dropdown">
+    <button id="newsDropdownBtn">뉴스 (한글) ▼</button>
+    <div class="dropdown-content">
+      <div data-sector="all">전체</div>
+      <div data-sector="politics">정치</div>
+      <div data-sector="economy">경제</div>
+      <div data-sector="society">사회</div>
+      <div data-sector="culture">문화</div>
+      <div data-sector="sports">스포츠</div>
+    </div>
+  </div>
+
   <button id="langNews">뉴스 (영어)</button>
 </div>
 
+
     <div id="sentence"></div>
-    <div id="news-link"></div> <!-- 뉴스 기사 링크 영역 -->
+    <div id="news-link"></div>
 
     <textarea id="input" placeholder="" spellcheck="false"></textarea>
-
 
     <div class="stats">
       <div>속도: <span id="speed">0 CPM</span></div>
