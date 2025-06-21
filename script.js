@@ -120,7 +120,7 @@ function pickAndRenderNewSentence() {
   }
 
   if (newsList.length > 0 && newsList[index]?.link) {
-    newsLinkEl.innerHTML = `<a href="${newsList[index].link}" target="_blank" style="color:#4a90e2; font-size:14px;">👉 기사 원문 보기</a>`;
+    newsLinkEl.innerHTML = `<a href="${newsList[index].link}" target="_blank" style="color:#4a90e2; font-size:18px;">👉 기사 원문 보기</a>`;
   } else {
     newsLinkEl.innerHTML = "";
   }
