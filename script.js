@@ -23,12 +23,19 @@ function autoResizeInput() {
   inputEl.style.height = "auto";
   inputEl.style.height = inputEl.scrollHeight + "px";
 }
+function decodeHTMLEntities(text) {
+  const txt = document.createElement("textarea");
+  txt.innerHTML = text;
+  return txt.value;
+}
 
 // ✅ 텍스트 정제 함수
 function cleanText(text) {
-  return text
+  const decoded = decodeHTMLEntities(text); // 숫자형 엔티티 디코딩
+
+  return decoded
     .replace(/<[^>]*>/g, " ")              // HTML 태그 제거
-    .replace(/&[a-z]+;/gi, " ")            // HTML 엔티티 제거
+    .replace(/&[a-z]+;/gi, " ")            // 일반 엔티티 제거
     .replace(/https?:\/\/\S+/g, " ")       // 링크 제거
     .replace(/[\r\n]/g, " ")               // 줄바꿈 제거
     .replace(/[^\p{L}\p{N} .,!?]/gu, "")   // 문자/숫자/공백/기본 문장부호만 허용
