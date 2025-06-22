@@ -278,7 +278,7 @@ document.querySelectorAll(".dropdown-content div").forEach(item => {
 
     // ✅ 버튼 텍스트 업데이트
     const selectedName = sectorNames[sector] || "전체";
-    document.getElementById("newsDropdownBtn").textContent = `뉴스(${selectedName})`;
+    document.getElementById("newsDropdownBtn").textContent = `뉴스(${selectedName}) ▼`;
 
     // ✅ 섹터별 URL 처리
     let url;
