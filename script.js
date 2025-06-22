@@ -34,10 +34,11 @@ function cleanText(text) {
     .replace(/&[a-z]+;/gi, " ")
     .replace(/https?:\/\/\S+/g, " ")
     .replace(/[\r\n]/g, " ")
-    .replace(/[^\p{L}\p{N} .,!?]/gu, "")
+    .replace(/[^\p{L}\p{N} .,!?'"“”‘’]/gu, "")
     .replace(/\s+/g, " ")
     .trim();
 }
+
 
 // ✅ 문장 또는 뉴스 불러오기
 function fetchSentences(lang) {
@@ -63,25 +64,55 @@ function fetchRSSNews(url) {
       const doc = new DOMParser().parseFromString(xml, "application/xml");
       let items = [...doc.querySelectorAll("item")].slice(0, 10);
 
-      // 제목이 '클로징'인 항목 제외
       items = items.filter(item => {
         const title = cleanText(item.querySelector("title")?.textContent || "").trim();
-        return title.toLowerCase() !== "클로징" && title.toLowerCase() !== "closing";
+        return !["클로징", "closing"].includes(title.toLowerCase());
       });
+
+      const isKoreanNews = url.includes("sbs.co.kr"); // SBS 뉴스인지 확인
 
       newsList = items.map(item => {
-        const title = cleanText(item.querySelector("title")?.textContent || "");
-        const descRaw = item.querySelector("description")?.textContent || "";
-        const desc = cleanText(descRaw);
-        const sentenceArray = desc.match(/[^.?!]+[.?!](\s|$)/g) || [desc];
+  const title = cleanText(item.querySelector("title")?.textContent || "");
+  const link = item.querySelector("link")?.textContent || "";
 
-        let summary = sentenceArray.find(s => s.length <= 100) || sentenceArray[0].slice(0, 100);
+  // 이미지 추출 시도 (media:thumbnail 또는 enclosure 태그)
+  let image = "";
+  const thumbnail = item.getElementsByTagName("media:thumbnail")[0];
+  const enclosure = item.getElementsByTagName("enclosure")[0];
 
-        return {
-          sentence: `${title}\n\n${summary}`,
-          link: item.querySelector("link")?.textContent || ""
-        };
-      });
+  if (thumbnail && thumbnail.getAttribute("url")) {
+    image = thumbnail.getAttribute("url");
+  } else if (enclosure && enclosure.getAttribute("url")) {
+    image = enclosure.getAttribute("url");
+  }
+
+  let summary = "";
+
+  if (isKoreanNews) {
+    const content = item.getElementsByTagName("content:encoded")[0]?.textContent || "";
+    const tempDiv = document.createElement("div");
+    tempDiv.innerHTML = content;
+
+    const paragraphEls = tempDiv.querySelectorAll("p.change");
+    const paragraphs = [...paragraphEls]
+      .map(p => cleanText(p.textContent))
+      .filter(p => p.length > 10);
+
+    summary = paragraphs.slice(0, 2).join(" ");
+  } else {
+    const descRaw = item.querySelector("description")?.textContent || "";
+    const desc = cleanText(descRaw);
+    const sentenceArray = desc.split(/(?<=[.?!])\s+/);
+    summary = sentenceArray.find(s => s.length <= 200) || sentenceArray[0].slice(0, 200);
+  }
+
+  return {
+    sentence: `${title}\n\n${summary}`,
+    link,
+    image
+  };
+});
+
 
       sentences = newsList.map(n => n.sentence);
       pickAndRenderNewSentence();
@@ -93,35 +124,7 @@ function fetchRSSNews(url) {
 }
 
 
-
 // ✅ 문장 렌더링
-function pickAndRenderNewSentence() {
-  previousSentence = currentSentence;
-  const index = Math.floor(Math.random() * sentences.length);
-  const sentenceData = sentences[index];
-
-  if (sentenceData.includes("\n\n")) {
-    const [title, body] = sentenceData.split("\n\n");
-    currentSentence = body;
-    const bodySpans = [...body].map(ch => `<span>${ch}</span>`).join('');
-    sentenceEl.innerHTML = `<div class="news-title">${title}</div><div class="news-body">${bodySpans}</div>`;
-  } else {
-    currentSentence = sentenceData;
-    sentenceEl.innerHTML = [...currentSentence].map(ch => `<span>${ch}</span>`).join('');
-  }
-
-  newsLinkEl.innerHTML = newsList[index]?.link
-    ? `<a href="${newsList[index].link}" target="_blank">👉 기사 원문 보기</a>`
-    : "";
-
-  inputEl.value = "";
-  startTime = null;
-  currentAccuracy = 0;
-  speedEl.textContent = currentLang === "kor" ? "0 CPM" : "0 WPM";
-  accuracyEl.textContent = "0";
-  autoResizeInput();
-}
-
 function pickAndRenderNewSentence() {
   if (sentences.length === 0) return;
 
@@ -136,19 +139,43 @@ function pickAndRenderNewSentence() {
 
   previousSentence = sentenceData;
 
+  const newsItem = newsList[index] || {};
+  const imgUrl = newsItem.image || "";
+
   if (sentenceData.includes("\n\n")) {
     const [title, body] = sentenceData.split("\n\n");
     currentSentence = body;
-    const bodySpans = [...body].map(ch => `<span>${ch}</span>`).join('');
-    sentenceEl.innerHTML = `<div class="news-title">${title}</div><div class="news-body">${bodySpans}</div>`;
+
+sentenceEl.innerHTML = `
+  <div class="news-container" style="display:flex; gap: 16px; align-items: flex-start;">
+    <div class="news-text" style="margin-top: -70px;">
+      <div class="news-title">${title}</div>
+      <div class="news-body">${[...body].map(ch => `<span>${ch}</span>`).join('')}</div>
+    </div>
+  </div>
+`;
+
+
   } else {
     currentSentence = sentenceData;
     sentenceEl.innerHTML = [...currentSentence].map(ch => `<span>${ch}</span>`).join('');
   }
 
-  newsLinkEl.innerHTML = newsList[index]?.link
-    ? `<a href="${newsList[index].link}" target="_blank">👉 기사 원문 보기</a>`
+  newsLinkEl.innerHTML = newsItem.link
+    ? `<a href="${newsItem.link}" target="_blank">👉 기사 원문 보기</a>`
     : "";
+
+  // 썸네일 우측 버튼 영역에도 넣기 (thumbnail-container div)
+  const thumbnailContainer = document.getElementById("thumbnail-container");
+
+if (newsList.length > 0 && imgUrl) {
+  thumbnailContainer.style.display = "block";  // 뉴스 모드면 보이게
+  thumbnailContainer.innerHTML = `<img src="${imgUrl}" alt="뉴스 썸네일" loading="lazy" />`;
+} else {
+  thumbnailContainer.style.display = "none";  // 한글/영어 모드면 숨기기
+  thumbnailContainer.innerHTML = "";
+}
+
 
   inputEl.value = "";
   startTime = null;
@@ -157,6 +184,8 @@ function pickAndRenderNewSentence() {
   accuracyEl.textContent = "0";
   autoResizeInput();
 }
+
+
 
 
 // ✅ 입력 감지
@@ -306,6 +335,10 @@ document.getElementById("langKor").addEventListener("click", () => {
   currentLang = "kor";
   count = 0;
   countEl.textContent = "0";
+
+  const thumbnailContainer = document.getElementById("thumbnail-container");
+  thumbnailContainer.style.display = "none";  // 숨김 처리
+
   fetchSentences("kor");
 });
 
@@ -313,6 +346,10 @@ document.getElementById("langEng").addEventListener("click", () => {
   currentLang = "eng";
   count = 0;
   countEl.textContent = "0";
+
+  const thumbnailContainer = document.getElementById("thumbnail-container");
+  thumbnailContainer.style.display = "none";  // 숨김 처리
+
   fetchSentences("eng");
 });
 
