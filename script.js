@@ -211,15 +211,17 @@ inputEl.addEventListener("keydown", (e) => {
     e.preventDefault();
 
     if (currentAccuracy >= 80) {
-      inputEl.blur();          // 💡 먼저 포커스 제거
-      inputEl.value = "";      // 💡 즉시 비우고
+      saveCurrentResult();    // 이전 문장 기록 저장
+
+      inputEl.blur();
+      inputEl.value = "";
 
       setTimeout(() => {
         pickAndRenderNewSentence();
         count++;
         countEl.textContent = count;
-        inputEl.focus();       // 💡 다시 포커스
-      }, 20); // 💡 10~20ms 정도 지연
+        inputEl.focus();
+      }, 20);
     } else {
       alert("정확도 80% 이상일 때만 다음 문장으로 넘어갑니다.");
     }
@@ -231,6 +233,8 @@ inputEl.addEventListener("keydown", (e) => {
     autoResizeInput();
   }
 });
+
+
 
 
 
@@ -314,5 +318,53 @@ document.addEventListener("click", (e) => {
     dropdown.classList.remove("open");
   }
 });
+let results = [];  // 결과 저장 배열
+
+// 문장 완료 시 호출할 기록 저장 함수
+function saveCurrentResult() {
+  if (!startTime) return;
+
+  const timeMinutes = (Date.now() - startTime) / 1000 / 60;
+  const totalTyped = inputEl.value.length;
+  const accuracy = currentAccuracy;
+
+  // 속도 계산 (kor=CPM, eng=WPM)
+  const speed = currentLang === "kor"
+    ? Math.round(totalTyped / timeMinutes)
+    : Math.round((totalTyped / 5) / timeMinutes);
+
+  results.push({
+    sentence: currentSentence,
+    accuracy: accuracy,
+    speed: speed,
+    timeSec: Math.round(timeMinutes * 60)
+  });
+
+  renderResults();
+}
+
+function saveCurrentResult() {
+  const minutes = (Date.now() - startTime) / 1000 / 60;
+  const typedLength = inputEl.value.length;
+  const speed = currentLang === "kor"
+    ? `${Math.round(typedLength / minutes)} CPM`
+    : `${Math.round((typedLength / 5) / minutes)} WPM`;
+
+  lastTypingRecord = {
+    sentence: currentSentence,
+    accuracy: currentAccuracy,
+    speed: speed,
+  };
+
+  const recordEl = document.getElementById("last-record");
+  if (recordEl) {
+    recordEl.innerHTML = `
+      <div><strong>sentence: </strong> ${lastTypingRecord.sentence}</div>
+      <div><strong>accuracy: </strong> ${lastTypingRecord.accuracy}%</div>
+      <div><strong>CPM: </strong> ${lastTypingRecord.speed}</div>
+    `;
+  }
+}
+
 
 fetchSentences(currentLang);
