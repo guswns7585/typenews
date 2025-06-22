@@ -376,7 +376,9 @@ body.dark .thumbnail-container {
 
 
 @media (max-width: 768px) {
-  
+   html, body {
+    overflow-y: auto;
+  }
   .container {
     padding: 20px;
     width: 100%;
