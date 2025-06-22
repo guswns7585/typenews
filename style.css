@@ -426,7 +426,8 @@ body.dark .thumbnail-container {
 
   .thumbnail-container {
     position: static;
-    margin-top: 20px;
+    margin-top: 10px;
+    margin-bottom: 10px;
     text-align: center;
     width: 180px;
     height: 100px;
