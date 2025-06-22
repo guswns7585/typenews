@@ -257,6 +257,18 @@ toggleBtn.addEventListener("click", () => {
 document.addEventListener("click", () => {
   inputEl.focus();
 });
+
+const sectorNames = {
+  all: "전체",
+  politics: "정치",
+  economy: "경제",
+  society: "사회",
+  global: "국제",
+  culture: "문화",
+  entertainment: "연예",
+  sports: "스포츠"
+};
+
 document.querySelectorAll(".dropdown-content div").forEach(item => {
   item.addEventListener("click", () => {
     const sector = item.getAttribute("data-sector");
@@ -264,6 +276,11 @@ document.querySelectorAll(".dropdown-content div").forEach(item => {
     count = 0;
     countEl.textContent = "0";
 
+    // ✅ 버튼 텍스트 업데이트
+    const selectedName = sectorNames[sector] || "전체";
+    document.getElementById("newsDropdownBtn").textContent = `뉴스(${selectedName})`;
+
+    // ✅ 섹터별 URL 처리
     let url;
     if (sector === "all") {
       url = "https://news.sbs.co.kr/news/headlineRssFeed.do";
@@ -279,11 +296,11 @@ document.querySelectorAll(".dropdown-content div").forEach(item => {
       };
       url = `https://news.sbs.co.kr/news/SectionRssFeed.do?sectionId=${sectorMap[sector]}`;
     }
-    console.log("Fetch URL:", url);  // 디버깅용
 
     fetchRSSNews(url);
   });
 });
+
 
 document.getElementById("langKor").addEventListener("click", () => {
   currentLang = "kor";
