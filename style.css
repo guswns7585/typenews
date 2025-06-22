@@ -195,6 +195,7 @@ body.dark .stats {
 }
 body.dark #input {
   background-color: #5f5f5f;
+  
   color: #bdbdbd;
   border: 1px solid #555;
   box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.3);
@@ -288,3 +289,37 @@ body.dark .dropdown-content {
 body.dark .dropdown-content div:hover {
   background-color: #3a3a3a;
 }
+.record-box {
+  margin-top: 20px;
+  padding: 12px 16px;
+  border: 0.2px solid #888;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+  border-radius: 8px;
+  font-size: 0.95rem;
+  color: #333;
+  line-height: 1.5;
+}
+
+.record-box strong {
+  display: inline-block;
+  width: 90px;
+  color: #555;
+}
+
+body.dark .record-box {
+  margin-top: 20px;
+  padding: 12px 16px;
+  border: 0.2px solid #888;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+  border-radius: 8px;
+  font-size: 0.95rem;
+  color: #b4b4b4;
+  line-height: 1.5;
+}
+
+body.dark .record-box strong {
+  display: inline-block;
+  width: 90px;
+  color: #b4b4b4;
+}
+
