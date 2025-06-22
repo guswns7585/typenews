@@ -5,54 +5,77 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Type News</title>
   <link rel="stylesheet" href="style.css" />
+  <!-- HTML head에 추가 -->
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700&display=swap" rel="stylesheet">
+
 </head>
 <body>
-  
 
   <div class="container" onclick="document.getElementById('input').focus()">
     <h1>Type News</h1>
 
-    <!-- 기본 모드 -->
-   <div class="lang-switch">
-  <button id="langKor">한국어</button>
-  <button id="langEng">English</button>
+    <!-- 모드 선택 영역 -->
+    <div class="lang-switch">
+      <button id="langKor">한국어</button>
+      <button id="langEng">English</button>
 
-  <div class="dropdown">
-    <button id="newsDropdownBtn">뉴스 (한글) ▼</button>
-    <div class="dropdown-content">
-      <div data-sector="all">전체</div>
-      <div data-sector="politics">정치</div>
-      <div data-sector="economy">경제</div>
-      <div data-sector="global">국제·글로벌</div>
-      <div data-sector="society">사회</div>
-      <div data-sector="entertainment">방송·연예</div>
-      <div data-sector="culture">문화·라이프</div>
-      <div data-sector="sports">스포츠</div>
+      <!-- 뉴스 (한글) 드롭다운 -->
+      <div class="dropdown">
+        <button id="newsDropdownBtn">뉴스 (한글) ▼</button>
+        <div class="dropdown-content">
+          <div data-sector="all">전체</div>
+          <div data-sector="politics">정치</div>
+          <div data-sector="economy">경제</div>
+          <div data-sector="global">국제·글로벌</div>
+          <div data-sector="society">사회</div>
+          <div data-sector="entertainment">방송·연예</div>
+          <div data-sector="culture">문화·라이프</div>
+          <div data-sector="sports">스포츠</div>
+        </div>
+      </div>
+
+      <!-- 영어 뉴스 버튼 -->
+      <button id="langNews">뉴스 (영어)</button>
+
+      <!-- 썸네일 -->
+      <div id="thumbnail-container" class="thumbnail-container"></div>
     </div>
-  </div>
 
-  <button id="langNews">뉴스 (영어)</button>
-   <div id="thumbnail-container" class="thumbnail-container"></div>
+    <!-- 문장 영역 -->
+    <div id="sentence"></div>
+   <div id="news-link" style="display: flex; justify-content: space-between; align-items: center;">
+  <a href="#" target="_blank" id="news-original-link" style="color:#007aff; font-size:14px; text-decoration:none;">👉 기사 원문 보기</a>
+  <span id="milestone-text" style="
+    opacity: 0;
+    transition: opacity 0.5s ease;
+    font-size: 14px;
+    color: #007aff;
+    margin-left: 12px;
+    white-space: nowrap;
+    user-select: none;
+  "></span>
 </div>
 
 
-    <div id="sentence"></div>
-    <div id="news-link"></div>
+    <div id="progress-bar"></div>
 
+    <!-- 입력창 -->
     <textarea id="input" placeholder="" spellcheck="false"></textarea>
 
+    <!-- 통계 -->
     <div class="stats">
       <div>speed: <span id="speed">0 CPM</span></div>
       <div>accuracy: <span id="accuracy">0</span>%</div>
       <div>count: <span id="count">0</span></div>
     </div>
-    <button id="toggle-theme">🌙 다크모드</button>
-    <div id="last-record" class="record-box" style="margin-top:30px; font-size:16px; color:#666;"></div>
-</div>
 
+    <!-- 다크모드 토글 -->
+    <button id="toggle-theme">🌙 다크모드</button>
+
+    <!-- 최종 기록 -->
+    <div id="last-record" class="record-box" style="margin-top: 30px; font-size: 16px; color: #666;"></div>
   </div>
 
   <script src="script.js"></script>
 </body>
-
 </html>

@@ -1,4 +1,6 @@
-/* 부드러운 진입 애니메이션 */
+/* ======================
+  공통 애니메이션
+======================== */
 @keyframes fadeInUp {
   0% {
     opacity: 0;
@@ -9,46 +11,96 @@
     transform: translateY(0);
   }
 }
+
+@keyframes slideFadeInRight {
+  0% {
+    opacity: 0;
+    transform: translateX(30px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* ======================
+  레이아웃 및 배경
+======================== */
 html, body {
   margin: 0;
   padding: 0;
-  overflow-x: hidden; /* 가로 스크롤 방지 */
+  overflow-x: hidden;
   overflow-y: hidden;
 }
 
 body {
-  margin: 0;
-  padding: 0;
   font-family: 'Pretendard', 'Noto Sans KR', system-ui, sans-serif;
-  background: linear-gradient(135deg, #c5d3fd8a 0%, #fbcbfd75 100%);
+  background: linear-gradient(135deg, #9099b988, #f3cbfd75, #c5d3fd88, #edcbfd75);
+  background-size: 300% 300%;  /* 넉넉하게 크게 */
   min-height: 100vh;
   display: flex;
   justify-content: center;
-  align-items: center; 
-  /* padding-top: 80px; */
+  align-items: center;
   color: #222;
-  animation: fadeInUp 0.8s ease;
+  animation: fadeInUp 0.8s ease, gradientMove 15s ease infinite; /* 두 애니메이션 함께 */
 }
 
+/* 그라데이션 위치를 부드럽게 이동시키는 애니메이션 */
+@keyframes gradientMove {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+body.dark {
+  background: linear-gradient(135deg, #474747 0%, #161616 100%);
+  color: #e0e0e0;
+}
+
+/* ======================
+  컨테이너
+======================== */
 .container {
   backdrop-filter: blur(16px);
   background-color: rgba(228, 228, 228, 0.534);
   border: 1px solid rgba(255, 255, 255, 0.2);
   border-radius: 20px;
-  padding: 40px;
+  padding: 80px;
   width: 90%;
   max-width: 900px;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
   animation: fadeInUp 1s ease;
-  padding: 80px;
 }
 
+body.dark .container {
+  background-color: rgba(44, 44, 44, 0.144);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+}
+
+/* ======================
+  텍스트 및 제목
+======================== */
 h1 {
-  font-size: 40px;
-  margin-bottom: 40px;
+font-family: 'Playfair Display', serif;
+font-weight: 900;
+
+  font-size: 50px;
   color: #2d2d2d;
+  margin-top: -10px;
 }
 
+
+body.dark h1 {
+  color: #b4b4b4;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
+}
 
 .sub {
   font-size: 14px;
@@ -56,22 +108,72 @@ h1 {
   margin-bottom: 30px;
 }
 
+.stats {
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  font-size: 16px;
+  margin-top: 20px;
+  color: #444;
+  gap: 10px;
+}
+
+body.dark .stats {
+  color: #b4b4b4;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
+}
+
+/* ======================
+  문장 영역
+======================== */
 #sentence {
   font-size: 20px;
   letter-spacing: 0.5px;
   line-height: 1.8;
-  margin-top: 28px;
-  margin-bottom: 0px;
+  margin: 28px 0 0;
   color: #222;
   white-space: pre-line;
   transition: all 0.2s ease;
 }
+
 #sentence > * {
   animation: fadeInUp 0.5s ease;
 }
 
+#sentence span.correct {
+  color: rgba(65, 206, 72, 0.788);
+  font-weight: bold;
+}
+
+#sentence span.incorrect {
+  color: rgba(214, 22, 22, 0.8);
+  font-weight: bold;
+}
+
+body.dark #sentence,
+body.dark .news-title,
+body.dark .news-body {
+  color: #b4b4b4;
+}
+
+/* ======================
+  뉴스 링크
+======================== */
 #news-link {
-  margin-bottom: 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  min-height: 24px; /* 높이 확보 */
+}
+
+#milestone-text {
+  opacity: 0;
+  transition: opacity 0.5s ease;
+  font-size: 14px;
+  color: #007aff;
+  margin-left: 12px;
+  white-space: nowrap;
+  user-select: none;
 }
 
 #news-link a {
@@ -81,24 +183,31 @@ h1 {
   font-weight: 500;
 }
 
-#sentence span.correct {
-  color: rgba(65, 206, 72, 0.788);
+.news-title {
   font-weight: bold;
-  transition: color 0.1s ease;
+  font-size: 20px;
+  margin-bottom: -12px;
+  animation: fadeInUp 0.5s ease;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Noto Sans", "Helvetica Neue", sans-serif;
+
 }
 
-#sentence span.incorrect {
-  color: rgba(214, 22, 22, 0.8);
-  font-weight: bold;
-  transition: color 0.1s ease;
+.news-body {
+  font-size: 18px;
+  color: #444;
+  line-height: 1.8;
+  animation: fadeInUp 0.5s ease;
+  margin-bottom: -20px;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Noto Sans", "Helvetica Neue", sans-serif;
+
+}
+#milestone-text.show {
+  opacity: 1;
 }
 
-#sentence:not(:has(.news-title)) {
-  margin-top: 28px;
-  margin-bottom: 100px;
-}
-
-
+/* ======================
+  입력창
+======================== */
 #input {
   width: 100%;
   font-size: 18px;
@@ -107,23 +216,37 @@ h1 {
   border-radius: 10px;
   outline: none;
   margin-bottom: 20px;
-  box-sizing: border-box;
   background-color: rgba(255, 255, 255, 0.95);
-  transition: border 0.2s ease, box-shadow 0.2s ease;
   resize: none;
   overflow-y: hidden;
   min-height: 80px;
   max-height: 300px;
   box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.05);
-   font-family: 'Pretendard', 'Noto Sans KR', system-ui, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Noto Sans", "Helvetica Neue", sans-serif;
+  width: 100%;
+  box-sizing: border-box; /* ✅ 패딩과 보더를 포함한 너비로 처리 */
 }
 
-/* 포커스 시 부드러운 효과 */
 #input:focus {
   border-color: #61616141;
   box-shadow: 0 0 0 4px rgba(180, 150, 248, 0.212);
 }
 
+body.dark #input {
+  background-color: #5f5f5f;
+  color: #bdbdbd;
+  border: 1px solid #555;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+body.dark #input:focus {
+  border-color: #a8a8a856;
+  box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.11);
+}
+
+/* ======================
+  버튼 및 다크모드
+======================== */
 button {
   background-color: rgba(255, 255, 255, 0.4);
   color: #333;
@@ -142,70 +265,6 @@ button:hover {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
 }
 
-.stats {
-  display: flex;
-  justify-content: space-between;
-  font-size: 16px;
-  margin-top: 20px;
-  color: #444;
-  flex-wrap: wrap;
-  gap: 10px;
-}
-
-.news-title {
-  font-weight: bold;
-  font-size: 20px;
-  margin-bottom: 12px;
-  animation: fadeInUp 0.5s ease;
-}
-
-.news-body {
-  font-size: 18px;
-  color: #444;
-  line-height: 1.8;
-  animation: fadeInUp 0.5s ease;
-}
-
-body.dark {
-  background: linear-gradient(135deg, #474747 0%, #161616 100%);
-  color: #e0e0e0;
-}
-
-body.dark .container {
-  background-color: rgba(44, 44, 44, 0.144);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
-}
-
-body.dark #sentence {
-  color: #b4b4b4;
-}
-
-body.dark .news-title,
-body.dark .news-body {
-  color: #b4b4b4;
-}
-body.dark h1 {
-  color: #b4b4b4; /* 더 밝은 글자색 */
-  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6); /* 가독성 향상 */
-}
-body.dark .stats {
-  color: #b4b4b4; /* 더 밝은 글자색 */
-  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6); /* 가독성 향상 */
-}
-body.dark #input {
-  background-color: #5f5f5f;
-  
-  color: #bdbdbd;
-  border: 1px solid #555;
-  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.3);
-}
-
-body.dark #input:focus {
-  border-color: #a8a8a856;
-  box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.11);
-}
-
 body.dark button {
   background-color: rgba(160, 160, 160, 0.267);
   color: #b4b4b4;
@@ -216,9 +275,6 @@ body.dark button:hover {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
 }
 
-body, .container, #input, .news-title, .news-body, button {
-  transition: background-color 0.4s ease, color 0.4s ease, box-shadow 0.4s ease, border-color 0.4s ease;
-}
 #toggle-theme {
   position: absolute;
   top: 20px;
@@ -226,16 +282,105 @@ body, .container, #input, .news-title, .news-body, button {
   background-color: transparent;
   border: none;
   font-size: 14px;
-  color: var(--text-color);
-  cursor: pointer;
   padding: 6px 12px;
   border-radius: 6px;
+  cursor: pointer;
   transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 #toggle-theme:hover {
   background-color: rgba(0, 0, 0, 0.05);
 }
+
+/* ======================
+  뉴스 썸네일
+======================== */
+.thumbnail-container {
+  margin-left: auto;
+  width: 260px;
+  height: 140px;
+  margin-top: -100px;
+  border-radius: 10px;
+  overflow: hidden;
+  flex-shrink: 0;
+  background-color: #fff;
+  box-shadow: 0 0 10px #2c2c2cc5;
+  animation: slideFadeInRight 0.6s ease forwards;
+}
+
+.thumbnail-container img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+body.dark .thumbnail-container {
+  background-color: #fff;
+  box-shadow: 0 0 10px #aaaaaa63;
+}
+
+/* ======================
+  기록 박스
+======================== */
+.record-box {
+  margin-top: 20px;
+  padding: 12px 16px;
+  border: 0.1px solid #8888883f;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+  border-radius: 8px;
+  font-size: 0.95rem;
+  line-height: 1.5;
+  color: #333;
+}
+
+.record-box strong {
+  display: inline-block;
+  width: 90px;
+  color: #555;
+}
+
+body.dark .record-box {
+  color: #b4b4b4;
+  border: 0.1px solid #8888882f;
+}
+
+body.dark .record-box strong {
+  color: #b4b4b4a9;
+}
+
+/* ======================
+  기타 요소
+======================== */
+.lang-switch {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+#progress-bar {
+  height: 4px;
+  width: 0%;
+  border-radius: 2px;
+  margin-bottom: 16px;
+  background: linear-gradient(to right, #3e55d488, #ad7fcc57);
+  transition: width 0.2s ease;
+  margin-top: 10px;
+}
+
+body.dark #progress-bar {
+  height: 4px;
+  width: 0%;
+  border-radius: 2px;
+  margin-bottom: 16px;
+  background: linear-gradient(to right, #5a5a5a88, #bebebe57);
+  transition: width 0.2s ease;
+}
+
+/* ======================
+  드롭다운 메뉴
+======================== */
 .dropdown {
   position: relative;
   display: inline-block;
@@ -245,20 +390,25 @@ body, .container, #input, .news-title, .news-body, button {
   position: absolute;
   top: 100%;
   left: 0;
+  min-width: 160px;
   background: linear-gradient(135deg, #f0f1f7ec 0%, #fef5ffe7 100%);
   backdrop-filter: blur(1px);
-  min-width: 160px;
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
   border-radius: 8px;
   overflow: hidden;
   z-index: 10;
-
-  /* 초기 상태 (닫힘) */
   opacity: 0;
   transform: translateY(10px);
   visibility: hidden;
   pointer-events: none;
   transition: opacity 0.3s ease, transform 0.3s ease, visibility 0.3s ease;
+}
+
+.dropdown.open .dropdown-content {
+  opacity: 1;
+  transform: translateY(0);
+  visibility: visible;
+  pointer-events: auto;
 }
 
 .dropdown-content div {
@@ -270,15 +420,6 @@ body, .container, #input, .news-title, .news-body, button {
   background-color: #f0f0f0;
 }
 
-/* 열림 상태 */
-.dropdown.open .dropdown-content {
-  opacity: 1;
-  transform: translateY(0);
-  visibility: visible;
-  pointer-events: auto;
-}
-
-/* 다크모드 */
 body.dark .dropdown-content {
   background: #383838e8;
   color: #bdbdbd;
@@ -289,96 +430,15 @@ body.dark .dropdown-content {
 body.dark .dropdown-content div:hover {
   background-color: #3a3a3a;
 }
-.record-box {
-  margin-top: 20px;
-  padding: 12px 16px;
-  border: 0.1px solid #8888883f;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-  border-radius: 8px;
-  font-size: 0.95rem;
-  color: #333;
-  line-height: 1.5;
-}
 
-.record-box strong {
-  display: inline-block;
-  width: 90px;
-  color: #555;
-}
-
-body.dark .record-box {
-  margin-top: 20px;
-  padding: 12px 16px;
-  border: 0.1px solid #8888882f;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-  border-radius: 8px;
-  font-size: 0.95rem;
-  color: #b4b4b4;
-  line-height: 1.5;
-}
-
-body.dark .record-box strong {
-  display: inline-block;
-  width: 90px;
-  color: #b4b4b4a9;
-}
-
-.lang-switch {
-  display: flex;
-  align-items: center;
-  gap: 12px; /* 버튼 사이 간격 */
-  flex-wrap: wrap; /* 작은 화면에서 줄바꿈 가능 */
-  /* 버튼들과 썸네일이 좌우로 배치됨 */
-}
-
-/* 썸네일 컨테이너 스타일 */
-.thumbnail-container {
-   margin-left: auto; /* 이게 핵심 — 오른쪽 끝으로 밀기 */
-  width: 260px;      /* 적당한 너비 지정 */
-  height: 140px;      /* 높이 지정 */
-   margin-top: -100px;
-  border-radius: 10px; /* 둥근 모서리 */
-  overflow: hidden;   /* 이미지 넘침 방지 */
-  box-shadow: 0 0 10px #2c2c2cc5; /* 주황색 그림자 */
-  flex-shrink: 0;     /* 작아지지 않도록 고정 */
-  background-color: #fff; /* 배경색 (필요시 조정) */
-}
-body.dark .thumbnail-container {
-   margin-top: -100px;
-  border-radius: 10px; /* 둥근 모서리 */
-  overflow: hidden;   /* 이미지 넘침 방지 */
-  box-shadow: 0 0 10px #aaaaaa63; /* 주황색 그림자 */
-  flex-shrink: 0;     /* 작아지지 않도록 고정 */
-  background-color: #fff; /* 배경색 (필요시 조정) */
-}
-/* 썸네일 내부 img 스타일 */
-.thumbnail-container img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-}
-
-@keyframes slideFadeInRight {
-  0% {
-    opacity: 0;
-    transform: translateX(30px);
-  }
-  100% {
-    opacity: 1;
-    transform: translateX(0);
-  }
-}
-
-.thumbnail-container {
-  animation: slideFadeInRight 0.6s ease forwards;
-}
-
-
+/* ======================
+  반응형 디자인
+======================== */
 @media (max-width: 768px) {
-   html, body {
+  html, body {
     overflow-y: auto;
   }
+
   .container {
     padding: 20px;
     width: 100%;
@@ -392,10 +452,8 @@ body.dark .thumbnail-container {
   }
 
   .lang-switch {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
     justify-content: center;
+    gap: 8px;
   }
 
   button {
@@ -404,9 +462,8 @@ body.dark .thumbnail-container {
   }
 
   #input {
-    font-size: 16px;
-    min-height: 60px;
-    max-height: 200px;
+    font-size: 15px;
+    min-height: 50px;
   }
 
   .stats {
@@ -428,19 +485,17 @@ body.dark .thumbnail-container {
 
   .thumbnail-container {
     position: static;
-    margin-top: 10px;
-    margin-bottom: 10px;
-    text-align: center;
+    margin: 10px auto;
     width: 180px;
     height: 100px;
-    
   }
 
   .thumbnail-container img {
     width: 100%;
-    max-width: 200px;
     height: auto;
+    max-width: 200px;
     border-radius: 10px;
+    object-position: top;
   }
 
   #toggle-theme {
@@ -455,99 +510,8 @@ body.dark .thumbnail-container {
     padding: 10px;
   }
 
-
-  #input {
-    min-height: 50px;
-    font-size: 15px;
-  }
-
   #sentence {
     font-size: 17px;
     line-height: 1.5;
-  }
-  body.dark .container {
-    background-color: rgba(44, 44, 44, 0.144);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
-  }
-
-  body.dark h1 {
-    color: #b4b4b4;
-    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
-    font-size: 20px;
-    text-align: center;
-  }
-
-  body.dark .news-title,
-  body.dark .news-body {
-    color: #b4b4b4;
-  }
-
-  body.dark .stats {
-    color: #b4b4b4;
-    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
-    flex-direction: column;
-    gap: 6px;
-    font-size: 14px;
-  }
-
-  body.dark #input {
-    background-color: #5f5f5f;
-    color: #bdbdbd;
-    border: 1px solid #555;
-    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.3);
-    font-size: 16px;
-    min-height: 60px;
-    max-height: 200px;
-  }
-
-  body.dark #input:focus {
-    border-color: #a8a8a856;
-    box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.11);
-  }
-
-  body.dark button {
-    background-color: rgba(160, 160, 160, 0.267);
-    color: #b4b4b4;
-    font-size: 14px;
-    padding: 8px 12px;
-  }
-
-  body.dark button:hover {
-    background-color: rgba(148, 148, 148, 0.15);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
-  }
-
-  body.dark .thumbnail-container {
-    background-color: #fff;
-    box-shadow: 0 0 10px #aaaaaa63;
-    margin-top: 20px;
-    width: 180px;
-    height: 100px;
-  }
-
-  body.dark .thumbnail-container img {
-    width: 100%;
-    max-width: 200px;
-    height: auto;
-    border-radius: 10px;
-  }
-
-  body.dark .record-box {
-    font-size: 14px;
-    padding: 10px;
-    color: #b4b4b4;
-    border: 0.1px solid #8888882f;
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-    border-radius: 8px;
-  }
-
-  body.dark .record-box strong {
-    color: #b4b4b4a9;
-  }
-
-  body.dark #toggle-theme {
-    font-size: 12px;
-    padding: 4px 8px;
   }
 }
