@@ -363,6 +363,9 @@ const milestoneMessages = [
   "수제 머신흑 완성입니다",
   "키캡이 번들거려요",
   "손가락 관절이 다 닳았겠어요",
+  "키보드를 좀 쉬게 해주시는건 어떠신가요",
+  "키보드가 죽어가고 있어요",
+  "키보드님께서 사망하셨습니다",
   // 필요하면 더 추가 가능
 ];
 
@@ -380,7 +383,7 @@ function showMilestoneMessage(idx) {
   // 3초 후 서서히 사라짐
    setTimeout(() => {
     milestoneTextEl.style.opacity = "0";
-  }, 3000);
+  }, 2000);
 }
 
 // ✅ 초기 실행
