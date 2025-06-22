@@ -292,7 +292,7 @@ body.dark .dropdown-content div:hover {
 .record-box {
   margin-top: 20px;
   padding: 12px 16px;
-  border: 0.2px solid #888;
+  border: 0.1px solid #8888883f;
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
   border-radius: 8px;
   font-size: 0.95rem;
@@ -309,7 +309,7 @@ body.dark .dropdown-content div:hover {
 body.dark .record-box {
   margin-top: 20px;
   padding: 12px 16px;
-  border: 0.2px solid #888;
+  border: 0.1px solid #8888882f;
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
   border-radius: 8px;
   font-size: 0.95rem;
@@ -320,6 +320,6 @@ body.dark .record-box {
 body.dark .record-box strong {
   display: inline-block;
   width: 90px;
-  color: #b4b4b4;
+  color: #b4b4b4a9;
 }
 
