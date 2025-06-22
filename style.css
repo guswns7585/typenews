@@ -9,6 +9,12 @@
     transform: translateY(0);
   }
 }
+html, body {
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden; /* 가로 스크롤 방지 */
+  overflow-y: hidden;
+}
 
 body {
   margin: 0;
@@ -18,15 +24,15 @@ body {
   min-height: 100vh;
   display: flex;
   justify-content: center;
-  align-items: flex-start;
-  padding-top: 80px;
+  align-items: center; 
+  /* padding-top: 80px; */
   color: #222;
   animation: fadeInUp 0.8s ease;
 }
 
 .container {
   backdrop-filter: blur(16px);
-  background-color: rgba(170, 138, 138, 0.068);
+  background-color: rgba(228, 228, 228, 0.534);
   border: 1px solid rgba(255, 255, 255, 0.2);
   border-radius: 20px;
   padding: 40px;
@@ -34,12 +40,14 @@ body {
   max-width: 900px;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
   animation: fadeInUp 1s ease;
+  padding: 80px;
 }
 
 h1 {
-  font-size: 36px;
+  font-size: 40px;
   margin-bottom: 40px;
   color: #2d2d2d;
+  
 }
 
 .sub {
@@ -74,13 +82,13 @@ h1 {
 }
 
 #sentence span.correct {
-  color: #4caf50;
+  color: rgba(65, 206, 72, 0.788);
   font-weight: bold;
   transition: color 0.1s ease;
 }
 
 #sentence span.incorrect {
-  color: #f44336;
+  color: rgba(214, 22, 22, 0.8);
   font-weight: bold;
   transition: color 0.1s ease;
 }
@@ -233,15 +241,23 @@ body, .container, #input, .news-title, .news-body, button {
 }
 
 .dropdown-content {
-  display: none;
   position: absolute;
-  min-width: 120px;
- 
-  border: 1px solid #ccc;
+  top: 100%;
+  left: 0;
+  background: linear-gradient(135deg, #f0f1f7ec 0%, #fef5ffe7 100%);
+  backdrop-filter: blur(1px);
+  min-width: 160px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
   border-radius: 8px;
-  z-index: 100;
-  margin-top: 4px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  overflow: hidden;
+  z-index: 10;
+
+  /* 초기 상태 (닫힘) */
+  opacity: 0;
+  transform: translateY(10px);
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 0.3s ease, transform 0.3s ease, visibility 0.3s ease;
 }
 
 .dropdown-content div {
@@ -253,48 +269,20 @@ body, .container, #input, .news-title, .news-body, button {
   background-color: #f0f0f0;
 }
 
-.dropdown:hover .dropdown-content {
-  display: block;
-}
-.dropdown {
-  position: relative;
-  display: inline-block;
-}
-
-.dropdown-content {
-  position: absolute;
-  top: 100%;
-  left: 0;
-  background: linear-gradient(135deg, #f0f1f7ec 0%, #fef5ffe7 100%);
- backdrop-filter: blur(1px);
-  min-width: 160px;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-  border-radius: 8px;
-  overflow: hidden;
-  z-index: 10;
-
-  /* 초기 상태 */
-  opacity: 0;
-  transform: translateY(10px);
-  visibility: hidden;
-  pointer-events: none;
-  transition: opacity 0.3s ease, transform 0.3s ease, visibility 0.3s ease;
-}
-
-/* 활성화 시 */
+/* 열림 상태 */
 .dropdown.open .dropdown-content {
   opacity: 1;
   transform: translateY(0);
   visibility: visible;
   pointer-events: auto;
 }
+
+/* 다크모드 */
 body.dark .dropdown-content {
-  background: #383838e8 !important;
-  backdrop-filter: blur(1px);
+  background: #383838e8;
   color: #bdbdbd;
   border: 1px solid #444;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
-  backdrop-filter: none;
 }
 
 body.dark .dropdown-content div:hover {
