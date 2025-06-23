@@ -9,6 +9,8 @@ let startTime = null;
 let currentAccuracy = 0;
 let results = [];
 let lastTypingRecord = {};
+let usedNewsIndexes = new Set(); // 사용된 뉴스 인덱스 저장
+
 
 // ✅ DOM 요소
 const sentenceEl = document.getElementById("sentence");
@@ -21,6 +23,8 @@ const thumbnailContainer = document.getElementById("thumbnail-container");
 const toggleBtn = document.getElementById("toggle-theme");
 const dropdownBtn = document.getElementById("newsDropdownBtn");
 const dropdown = dropdownBtn.closest(".dropdown");
+
+
 
 // ✅ 자동 높이 조절
 function autoResizeInput() {
@@ -78,6 +82,7 @@ function fetchRSSNews(url) {
       });
 
       const isKoreanNews = url.includes("sbs.co.kr");
+      usedNewsIndexes.clear(); // 이전에 본 뉴스 기록 초기화
 
       newsList = items.map(item => {
         const title = cleanText(item.querySelector("title")?.textContent || "");
@@ -130,17 +135,29 @@ function fetchRSSNews(url) {
 function pickAndRenderNewSentence() {
   if (sentences.length === 0) return;
 
+  // 모든 뉴스 문장을 사용했다면 종료 메시지 출력
+  if (usedNewsIndexes.size === sentences.length) {
+    sentenceEl.innerHTML = `<div class="completed-message">현재 제공 가능한 뉴스 문장을 모두 완료하셨습니다. 📰</div>`;
+    thumbnailContainer.style.display = "none";
+    inputEl.value = "";
+    inputEl.disabled = true;
+    newsLinkEl.style.visibility = "hidden";
+    return;
+  }
+
   let index, sentenceData, attempts = 0;
   do {
     index = Math.floor(Math.random() * sentences.length);
     sentenceData = sentences[index];
     attempts++;
-  } while (sentenceData === previousSentence && attempts < 10);
+  } while ((sentenceData === previousSentence || usedNewsIndexes.has(index)) && attempts < 50);
 
+  usedNewsIndexes.add(index);  // 선택한 인덱스 기록
   previousSentence = sentenceData;
   const newsItem = newsList[index] || {};
   const imgUrl = newsItem.image || "";
 
+  // 이하 기존 렌더링 로직 그대로 유지
   if (sentenceData.includes("\n\n")) {
     const [title, body] = sentenceData.split("\n\n");
     currentSentence = body;
@@ -157,21 +174,15 @@ function pickAndRenderNewSentence() {
     sentenceEl.innerHTML = [...currentSentence].map(ch => `<span>${ch}</span>`).join('');
   }
 
-  // 기존 코드
-const newsOriginalLink = document.getElementById("news-original-link");
-const milestoneTextEl = document.getElementById("milestone-text");
+  const newsOriginalLink = document.getElementById("news-original-link");
 
-// 링크가 있을 경우에만 링크 보이기
-if (newsItem.link) {
-  newsOriginalLink.href = newsItem.link;
-  newsOriginalLink.style.visibility = "visible";
-} else {
-  newsOriginalLink.href = "#";
-  newsOriginalLink.style.visibility = "hidden";  // ✅ 자리 유지됨
-}
-
-
-// milestoneTextEl은 항상 유지 (display 조작 X)
+  if (newsItem.link) {
+    newsOriginalLink.href = newsItem.link;
+    newsOriginalLink.style.visibility = "visible";
+  } else {
+    newsOriginalLink.href = "#";
+    newsOriginalLink.style.visibility = "hidden";
+  }
 
   if (imgUrl) {
     thumbnailContainer.style.display = "block";
@@ -182,12 +193,14 @@ if (newsItem.link) {
   }
 
   inputEl.value = "";
+  inputEl.disabled = false;
   startTime = null;
   currentAccuracy = 0;
   speedEl.textContent = currentLang === "kor" ? "0 CPM" : "0 WPM";
   accuracyEl.textContent = "0";
   autoResizeInput();
 }
+
 
 // ✅ 입력 처리
 function updateHighlight() {
@@ -228,6 +241,7 @@ function updateProgress() {
   const percent = Math.min((inputEl.value.length / currentSentence.length) * 100, 100);
   progressEl.style.width = `${percent}%`;
 }
+
 
 function saveCurrentResult() {
   const minutes = (Date.now() - startTime) / 1000 / 60;
@@ -422,6 +436,47 @@ function splitIntoShortSentences(text, maxLen = 150) {
 
   return result;
 }
+
+document.addEventListener("DOMContentLoaded", () => {
+  let clickCount = 0;
+  const siteTitle = document.getElementById("site-title");
+  const inputEl = document.getElementById("input");
+  const meowSound = new Audio("keyboard-click.wav");
+  meowSound.volume = 0.3;
+
+  function toggleCatMode() {
+    if (document.body.classList.contains("cat-mode")) {
+      document.body.classList.remove("cat-mode");
+    } else {
+      document.body.classList.add("cat-mode");
+    }
+    meowSound.currentTime = 0;
+    meowSound.play();
+  }
+
+  siteTitle.addEventListener("click", () => {
+    siteTitle.classList.add("clicked");
+    setTimeout(() => {
+      siteTitle.classList.remove("clicked");
+    }, 120);
+
+    clickCount++;
+    if (clickCount === 5) {
+      toggleCatMode();
+      clickCount = 0;
+    }
+  });
+
+  inputEl.addEventListener("input", () => {
+    if (document.body.classList.contains("cat-mode")) {
+      meowSound.currentTime = 0;
+      meowSound.play();
+    }
+  });
+});
+
+
+
 
 // ✅ 초기 실행
 const isDark = localStorage.getItem("darkMode") === "true";
