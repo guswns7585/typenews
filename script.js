@@ -37,14 +37,18 @@ function decodeHTMLEntities(text) {
 
 function cleanText(text) {
   return decodeHTMLEntities(text)
-    .replace(/<[^>]*>/g, " ")
-    .replace(/&[a-z]+;/gi, " ")
-    .replace(/https?:\/\/\S+/g, " ")
-    .replace(/[\r\n]/g, " ")
-    .replace(/[^\p{L}\p{N} .,!?'"“”‘’]/gu, "")
-    .replace(/\s+/g, " ")
+    .replace(/<[^>]*>/g, " ")                        // HTML 태그 제거
+    .replace(/&[a-z]+;/gi, " ")                      // HTML 엔티티 제거
+    .replace(/https?:\/\/\S+/g, " ")                 // URL 제거
+    .replace(/[\r\n]/g, " ")                         // 줄바꿈 제거
+    .replace(/[①②③④⑤⑥⑦⑧⑨⑩⑪⑫©★※…•◆■▶▷]/g, "") // 특수 문자 제거
+    .replace(/[\u3130-\u318F\uAC00-\uD7A3]+/g, (match) => match) // 한글 유지
+    .replace(/[一-龯]/g, "")                          // 한자 제거
+    .replace(/[^\p{L}\p{N} .,!?'"“”‘’]/gu, "")        // 특수문자 제외
+    .replace(/\s+/g, " ")                            // 여백 정리
     .trim();
 }
+
 
 // ✅ 문장 로딩
 function fetchSentences(lang) {
@@ -79,26 +83,37 @@ function fetchRSSNews(url) {
         const title = cleanText(item.querySelector("title")?.textContent || "");
         const link = item.querySelector("link")?.textContent || "";
 
+        // 썸네일 추출
         let image = "";
         const thumbnail = item.getElementsByTagName("media:thumbnail")[0];
         const enclosure = item.getElementsByTagName("enclosure")[0];
         if (thumbnail?.getAttribute("url")) image = thumbnail.getAttribute("url");
         else if (enclosure?.getAttribute("url")) image = enclosure.getAttribute("url");
 
+        // 내용 정제 및 분할
         let summary = "";
         if (isKoreanNews) {
           const content = item.getElementsByTagName("content:encoded")[0]?.textContent || "";
           const tempDiv = document.createElement("div");
           tempDiv.innerHTML = content;
-          const paragraphs = [...tempDiv.querySelectorAll("p.change")].map(p => cleanText(p.textContent)).filter(p => p.length > 10);
+
+          const paragraphs = [...tempDiv.querySelectorAll("p.change")]
+            .map(p => cleanText(p.textContent))
+            .flatMap(p => splitIntoShortSentences(p))
+            .filter(p => p.length > 10);
+
           summary = paragraphs.slice(0, 2).join(" ");
         } else {
           const desc = cleanText(item.querySelector("description")?.textContent || "");
-          const sentences = desc.split(/(?<=[.?!])\s+/);
-          summary = sentences.find(s => s.length <= 200) || sentences[0].slice(0, 200);
+          const shortSentences = splitIntoShortSentences(desc);
+          summary = shortSentences.slice(0, 2).join(" ");
         }
 
-        return { sentence: `${title}\n\n${summary}`, link, image };
+        return {
+          sentence: `${title}\n\n${summary}`,
+          link,
+          image
+        };
       });
 
       sentences = newsList.map(n => n.sentence);
@@ -109,6 +124,7 @@ function fetchRSSNews(url) {
       alert("뉴스 로딩 중 오류 발생");
     });
 }
+
 
 // ✅ 문장 렌더링
 function pickAndRenderNewSentence() {
@@ -384,6 +400,27 @@ function showMilestoneMessage(idx) {
    setTimeout(() => {
     milestoneTextEl.style.opacity = "0";
   }, 2000);
+}
+function splitIntoShortSentences(text, maxLen = 150) {
+  const sentenceEndRegex = /(?<=[.!?。])\s+/g;
+  const roughSentences = text.split(sentenceEndRegex);
+
+  const result = [];
+
+  for (let sentence of roughSentences) {
+    sentence = sentence.trim();
+    if (sentence.length <= maxLen) {
+      if (sentence.length > 10) result.push(sentence);
+    } else {
+      // 너무 긴 문장은 maxLen 단위로 잘라서 추가
+      for (let i = 0; i < sentence.length; i += maxLen) {
+        const chunk = sentence.slice(i, i + maxLen).trim();
+        if (chunk.length > 10) result.push(chunk);
+      }
+    }
+  }
+
+  return result;
 }
 
 // ✅ 초기 실행
