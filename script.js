@@ -284,20 +284,23 @@ inputEl.addEventListener("keydown", (e) => {
     saveCurrentResult();
     inputEl.blur();
     setTimeout(() => {
-  pickAndRenderNewSentence();
-  count++;
-  countEl.textContent = count;
+      pickAndRenderNewSentence();
+      count++;
+      countEl.textContent = count;
 
-  if (count % 100 === 0) {
-    const idx = (count / 100) - 1; // 0부터 시작하는 인덱스
-    showMilestoneMessage(idx);
-  }
+      if (count % 100 === 0) {
+        const idx = (count / 100) - 1;
+        showMilestoneMessage(idx);
+      }
 
-  inputEl.focus();
-}, 20);
+      inputEl.focus();
+    }, 20);
 
-  } else if ((isEnter || isSpace) && currentAccuracy < 80) {
-    alert("정확도 80% 이상일 때만 다음 문장으로 넘어갑니다.");
+  } else if ((isEnter || isSpace) && !isComplete) {
+    // 입력이 문장 길이만큼 안 됐으면 알림 안 뜸 (무시)
+  } else if ((isEnter || isSpace) && isComplete && currentAccuracy < 80) {
+    // 입력 완료된 상태에서 정확도가 낮으면 알림 뜸
+    // alert("정확도 80% 이상일 때만 다음 문장으로 넘어갑니다.");
   }
 
   if (e.key === "Escape") {
@@ -306,6 +309,7 @@ inputEl.addEventListener("keydown", (e) => {
     autoResizeInput();
   }
 });
+
 
 toggleBtn.addEventListener("click", () => {
   document.body.classList.toggle("dark");
