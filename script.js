@@ -10,6 +10,7 @@ let currentAccuracy = 0;
 let results = [];
 let lastTypingRecord = {};
 let usedNewsIndexes = new Set(); // 사용된 뉴스 인덱스 저장
+let isNewsMode = false;
 
 
 // ✅ DOM 요소
@@ -45,6 +46,7 @@ function cleanText(text) {
     .replace(/&[a-z]+;/gi, " ")                      // HTML 엔티티 제거
     .replace(/https?:\/\/\S+/g, " ")                 // URL 제거
     .replace(/[\r\n]/g, " ")                         // 줄바꿈 제거
+    .replace(/\([^)]*\)/g, "")                       // 소괄호와 괄호 안 내용 제거 ✅
     .replace(/[①②③④⑤⑥⑦⑧⑨⑩⑪⑫©★※…•◆■▶▷]/g, "") // 특수 문자 제거
     .replace(/[\u3130-\u318F\uAC00-\uD7A3]+/g, (match) => match) // 한글 유지
     .replace(/[一-龯]/g, "")                          // 한자 제거
@@ -52,6 +54,7 @@ function cleanText(text) {
     .replace(/\s+/g, " ")                            // 여백 정리
     .trim();
 }
+
 
 
 // ✅ 문장 로딩
@@ -161,6 +164,7 @@ function pickAndRenderNewSentence() {
   if (sentenceData.includes("\n\n")) {
     const [title, body] = sentenceData.split("\n\n");
     currentSentence = body;
+    isNewsMode = true; // 뉴스일 경우 true
     sentenceEl.innerHTML = `
       <div class="news-container" style="display:flex; gap: 16px; align-items: flex-start;">
         <div class="news-text" style="margin-top: -70px;">
@@ -171,6 +175,7 @@ function pickAndRenderNewSentence() {
     `;
   } else {
     currentSentence = sentenceData;
+    isNewsMode = false; // 일반 문장일 경우 false
     sentenceEl.innerHTML = [...currentSentence].map(ch => `<span>${ch}</span>`).join('');
   }
 
@@ -208,20 +213,32 @@ function updateHighlight() {
   const target = currentSentence;
   const spans = sentenceEl.querySelectorAll(".news-body span, #sentence span");
 
-  let correct = 0;
-  for (let i = 0; i < spans.length; i++) {
-    const typed = input[i];
-    const expected = target[i];
+ let correct = 0;
+for (let i = 0; i < spans.length; i++) {
+  const typed = input[i];
+  const expected = currentSentence[i];
 
-    if (typed == null) spans[i].className = "";
-    else if (i === input.length - 1 && typed !== expected) spans[i].className = "";
-    else if (typed === expected) {
-      spans[i].className = "correct";
-      correct++;
-    } else {
-      spans[i].className = "incorrect";
-    }
+  if (typed == null) {
+    spans[i].className = "";
+    continue;
   }
+
+  const typedChar = isNewsMode ? typed.toLowerCase() : typed;
+  const expectedChar = isNewsMode ? expected.toLowerCase() : expected;
+  const isCorrect = typedChar === expectedChar;
+
+  if (i === input.length - 1 && !isCorrect) {
+    spans[i].className = "";
+  } else if (isCorrect) {
+    spans[i].className = "correct";
+    correct++;
+  } else {
+    spans[i].className = "incorrect";
+  }
+}
+
+
+
 
   const total = input.length;
   const minutes = (Date.now() - startTime) / 1000 / 60;
