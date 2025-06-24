@@ -50,8 +50,12 @@ function cleanText(text) {
     .replace(/[①②③④⑤⑥⑦⑧⑨⑩⑪⑫©★※…•◆■▶▷]/g, "") // 특수 문자 제거
     .replace(/[\u3130-\u318F\uAC00-\uD7A3]+/g, (match) => match) // 한글 유지
     .replace(/[一-龯]/g, "")                          // 한자 제거
-    .replace(/[^\p{L}\p{N} .,!?'"“”‘’]/gu, "")        // 특수문자 제외
+    .replace(/[^\p{L}\p{N} .,!?'"“”‘’~]/gu, "")        // 특수문자 제외
     .replace(/\s+/g, " ")                            // 여백 정리
+    .replace(/^▲.*관련이 없습니다\./gm, "") // '▲...관련이 없습니다.'로 시작하는 줄 제거
+    // 숫자 사이의 마침표(.) 제외하고, 문자 뒤에 붙은 문장부호 뒤에만 공백 추가
+    .replace(/([^\d\s])([.,!?])(?=\S)/g, "$1$2 ")
+     .replace(/위 사진은 기사 내용과 관련이 없습니다\./g, "")  // 이 문장 제거 추가
     .trim();
 }
 
@@ -80,9 +84,22 @@ function fetchRSSNews(url) {
     .then(xml => {
       const doc = new DOMParser().parseFromString(xml, "application/xml");
       let items = [...doc.querySelectorAll("item")].slice(0, 10).filter(item => {
-        const title = cleanText(item.querySelector("title")?.textContent || "");
-        return !["클로징", "closing"].includes(title.toLowerCase());
-      });
+  const rawTitle = item.querySelector("title")?.textContent || "";
+
+  const lowerTitle = rawTitle.toLowerCase();
+  if (["클로징", "closing"].includes(lowerTitle.trim())) return false;
+
+  // 공백, 대괄호, 특수문자 제거 후 소문자 변환
+  const normalizedTitle = rawTitle
+    .replace(/\s+/g, '')           // 공백 제거
+    .replace(/[\[\]【】]/g, '')    // 대괄호 및 유사 문자 제거
+    .toLowerCase();
+
+  if (normalizedTitle.includes("뉴스직격")) return false;
+
+  return true;
+});
+
 
       const isKoreanNews = url.includes("sbs.co.kr");
       usedNewsIndexes.clear(); // 이전에 본 뉴스 기록 초기화
@@ -356,23 +373,105 @@ document.querySelectorAll(".dropdown-content div").forEach(item => {
     countEl.textContent = "0";
     document.getElementById("newsDropdownBtn").textContent = `뉴스(${sectorNames[sector] || "전체"}) ▼`;
 
-    const sectorMap = {
-      politics: "01",
-      economy: "02",
-      society: "03",
-      global: "07",
-      culture: "08",
-      entertainment: "14",
-      sports: "09"
-    };
-
-    const url = sector === "all"
-      ? "https://news.sbs.co.kr/news/headlineRssFeed.do"
-      : `https://news.sbs.co.kr/news/SectionRssFeed.do?sectionId=${sectorMap[sector]}`;
-
-    fetchRSSNews(url);
+    if (sector === "all") {
+      fetchAllSectorsNews();
+    } else {
+      const sectorMap = {
+        main: "https://news.sbs.co.kr/news/headlineRssFeed.do",
+        politics: "https://news.sbs.co.kr/news/SectionRssFeed.do?sectionId=01",
+        economy: "https://news.sbs.co.kr/news/SectionRssFeed.do?sectionId=02",
+        society: "https://news.sbs.co.kr/news/SectionRssFeed.do?sectionId=03",
+        global: "https://news.sbs.co.kr/news/SectionRssFeed.do?sectionId=07",
+        culture: "https://news.sbs.co.kr/news/SectionRssFeed.do?sectionId=08",
+        entertainment: "https://news.sbs.co.kr/news/SectionRssFeed.do?sectionId=14",
+        sports: "https://news.sbs.co.kr/news/SectionRssFeed.do?sectionId=09"
+      };
+      fetchRSSNews(sectorMap[sector] || sectorMap.main);
+    }
   });
 });
+
+function fetchAllSectorsNews() {
+  const sectors = [
+    "01", "02", "03", "07", "08", "14", "09"
+  ];
+
+  const baseUrl = "https://news.sbs.co.kr/news/SectionRssFeed.do?sectionId=";
+  let allNewsItems = [];
+
+  // 모든 RSS를 비동기로 fetch해서 뉴스 배열 모으기
+  Promise.all(
+    sectors.map(sec => fetchRSSNewsForSector(baseUrl + sec))
+  ).then(results => {
+    results.forEach(newsItems => {
+      allNewsItems = allNewsItems.concat(newsItems);
+    });
+    // 섞기 (Fisher–Yates shuffle)
+    for (let i = allNewsItems.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [allNewsItems[i], allNewsItems[j]] = [allNewsItems[j], allNewsItems[i]];
+    }
+
+    newsList = allNewsItems;
+    sentences = newsList.map(n => n.sentence);
+    usedNewsIndexes.clear();
+    pickAndRenderNewSentence();
+  }).catch(err => {
+    console.error("전체 섹터 뉴스 로딩 실패", err);
+  });
+}
+
+// 섹터별 RSS를 받아서 뉴스 아이템 배열 리턴
+function fetchRSSNewsForSector(url) {
+  const proxy = 'https://corsproxy.io/?url=';
+  return fetch(proxy + encodeURIComponent(url))
+    .then(res => res.text())
+    .then(xml => {
+      const doc = new DOMParser().parseFromString(xml, "application/xml");
+      let items = [...doc.querySelectorAll("item")].slice(0, 10).filter(item => {
+        const title = cleanText(item.querySelector("title")?.textContent || "");
+        return !["클로징", "closing"].includes(title.toLowerCase());
+      });
+
+      const isKoreanNews = url.includes("sbs.co.kr");
+
+      return items.map(item => {
+        const title = cleanText(item.querySelector("title")?.textContent || "");
+        const link = item.querySelector("link")?.textContent || "";
+
+        let image = "";
+        const thumbnail = item.getElementsByTagName("media:thumbnail")[0];
+        const enclosure = item.getElementsByTagName("enclosure")[0];
+        if (thumbnail?.getAttribute("url")) image = thumbnail.getAttribute("url");
+        else if (enclosure?.getAttribute("url")) image = enclosure.getAttribute("url");
+
+        let summary = "";
+        if (isKoreanNews) {
+          const content = item.getElementsByTagName("content:encoded")[0]?.textContent || "";
+          const tempDiv = document.createElement("div");
+          tempDiv.innerHTML = content;
+
+          const paragraphs = [...tempDiv.querySelectorAll("p.change")]
+            .map(p => cleanText(p.textContent))
+            .flatMap(p => splitIntoShortSentences(p))
+            .filter(p => p.length > 10);
+
+          summary = paragraphs.slice(0, 2).join(" ");
+        } else {
+          const desc = cleanText(item.querySelector("description")?.textContent || "");
+          const shortSentences = splitIntoShortSentences(desc);
+          summary = shortSentences.slice(0, 2).join(" ");
+        }
+
+        return {
+          sentence: `${title}\n\n${summary}`,
+          link,
+          image
+        };
+      });
+    });
+}
+
 
 document.getElementById("langKor").addEventListener("click", () => {
   currentLang = "kor";
