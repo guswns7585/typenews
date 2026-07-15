@@ -65,5 +65,11 @@ node_modules/
 # dotenv environment variables file
 .env
 
+# Local Firebase API exports may contain personal data.
+backups/
+*firebase-adminsdk-*.json
+
 # dataconnect generated files
 .dataconnect
+
+.idea
