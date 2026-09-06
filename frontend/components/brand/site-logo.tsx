@@ -1,5 +1,7 @@
 "use client";
 
+import { LogoMark } from "@/components/brand/logo-mark";
+
 type SiteLogoProps = {
   onClick?: () => void;
   clicked?: boolean;
@@ -17,8 +19,8 @@ export function SiteLogo({ onClick, clicked }: SiteLogoProps) {
         if (event.key === "Enter" || event.key === " ") onClick?.();
       }}
     >
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src="/newtypenewslogo.svg" alt="Type News" width={280} height={90} draggable={false} />
+      {/* 인라인 SVG라 커스텀 배경의 글자·버튼 색이 로고에도 그대로 반영된다. */}
+      <LogoMark className="site-logo-svg" />
     </h1>
   );
 }

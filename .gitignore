@@ -29,6 +29,11 @@ lib-cov
 # Coverage directory used by tools like istanbul
 coverage
 
+# Python bytecode and generated migration output
+__pycache__/
+*.py[cod]
+/migration-report.json
+
 # nyc test coverage
 .nyc_output
 
@@ -46,6 +51,7 @@ build/Release
 
 # Dependency directories
 node_modules/
+.venv/
 
 # Optional npm cache directory
 .npm
@@ -62,12 +68,20 @@ node_modules/
 # Yarn Integrity file
 .yarn-integrity
 
-# dotenv environment variables file
+# dotenv environment variables files
 .env
+.env.*
+!.env.example
 
 # Local Firebase API exports may contain personal data.
 backups/
+firebase-auth-export*.json
+*auth-export*.json
 *firebase-adminsdk-*.json
+
+# Locally generated reports and previews
+/docs/public-stats/
+/frontend/typenews-preview.png
 
 # dataconnect generated files
 .dataconnect

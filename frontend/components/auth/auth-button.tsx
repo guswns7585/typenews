@@ -1,8 +1,11 @@
 "use client";
 
-import { LogOut } from "lucide-react";
 import { useEffect, useState } from "react";
-import { getSupabaseClient } from "@/lib/supabase/client";
+import { getSupabaseClient, hasSupabaseConfig } from "@/lib/supabase/client";
+import { useUiLanguage } from "@/lib/ui-language";
+
+/** 프로필(닉네임 등)이 바뀌었을 때 화면 곳곳에 알리는 신호. */
+export const PROFILE_UPDATED_EVENT = "typenews:profile-updated";
 
 function GoogleIcon() {
   return (
@@ -27,60 +30,103 @@ function GoogleIcon() {
   );
 }
 
-export function AuthButton() {
+/**
+ * 로그인 여부와 표시할 닉네임.
+ *
+ * 헤더의 로그인 버튼과 설정 버튼이 같은 값을 봐야 해서 훅으로 뺐다.
+ * 로그아웃 버튼은 설정 사이드바 안으로 옮겼다 — 헤더에서 설정 바로 옆에 있으니
+ * 설정을 누르려다 로그아웃되는 일이 잦다는 제보가 있었다.
+ */
+export function useAuthProfile() {
+  const [isConfigured] = useState(hasSupabaseConfig);
   const [email, setEmail] = useState<string | null>(null);
   const [nickname, setNickname] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!isConfigured) return;
     const supabase = getSupabaseClient();
+    if (!supabase) return;
+
+    let active = true;
+
+    /* 표시할 이름은 우리 DB의 profiles.display_name이다.
+       예전에는 Google 계정 이름(user_metadata)만 읽어서, 설정에서 닉네임을
+       바꿔도 여기 표시는 그대로였다. */
+    async function loadNickname(signedIn: boolean) {
+      if (!signedIn) {
+        if (active) setNickname(null);
+        return;
+      }
+      const { data, error } = await supabase!.from("profiles").select("display_name").maybeSingle();
+      if (!active) return;
+      if (error) {
+        console.error("프로필 이름 불러오기 실패", error);
+        return;
+      }
+      setNickname(data?.display_name ?? null);
+    }
+
     void supabase.auth.getSession().then(({ data }) => {
-      const user = data.session?.user;
-      setEmail(user?.email ?? null);
-      setNickname(
-        (user?.user_metadata?.nickname as string | undefined) ??
-          (user?.user_metadata?.full_name as string | undefined) ??
-          null,
-      );
+      if (!active) return;
+      setEmail(data.session?.user?.email ?? null);
+      void loadNickname(Boolean(data.session));
     });
+
     const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
       setEmail(session?.user?.email ?? null);
-      setNickname(
-        (session?.user?.user_metadata?.nickname as string | undefined) ??
-          (session?.user?.user_metadata?.full_name as string | undefined) ??
-          null,
-      );
+      void loadNickname(Boolean(session));
     });
-    return () => sub.subscription.unsubscribe();
-  }, []);
+
+    // 설정에서 닉네임을 바꾸면 곧바로 여기도 갱신되어야 한다.
+    const onProfileUpdated = () => void loadNickname(true);
+    window.addEventListener(PROFILE_UPDATED_EVENT, onProfileUpdated);
+
+    return () => {
+      active = false;
+      sub.subscription.unsubscribe();
+      window.removeEventListener(PROFILE_UPDATED_EVENT, onProfileUpdated);
+    };
+  }, [isConfigured]);
 
   async function signIn() {
     const supabase = getSupabaseClient();
+    if (!supabase) return;
+    const configuredSiteUrl = process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/+$/, "");
+    const siteUrl = configuredSiteUrl || window.location.origin;
     await supabase.auth.signInWithOAuth({
       provider: "google",
-      options: { redirectTo: `${window.location.origin}/auth/callback` },
+      options: { redirectTo: `${siteUrl}/auth/callback` },
     });
   }
 
-  async function signOut() {
-    await getSupabaseClient().auth.signOut();
-    setEmail(null);
-    setNickname(null);
-  }
+  return { isConfigured, email, nickname, signedIn: Boolean(email), signIn };
+}
+
+/** 로그아웃. 로컬 기록 정리는 preferences-sync가 SIGNED_OUT 이벤트로 처리한다. */
+export async function signOutUser() {
+  const supabase = getSupabaseClient();
+  if (!supabase) return;
+  await supabase.auth.signOut();
+}
+
+/**
+ * 헤더의 로그인 버튼.
+ *
+ * 로그인한 뒤에는 아무것도 그리지 않는다. 닉네임은 설정 버튼이 보여주고,
+ * 로그아웃은 설정 사이드바 안에 있다.
+ */
+export function AuthButton() {
+  const { t } = useUiLanguage();
+  const { isConfigured, signedIn, signIn } = useAuthProfile();
+
+  if (!isConfigured || signedIn) return null;
 
   return (
     <div id="auth-container">
-      {!email ? (
-        <button id="login-btn" type="button" className="btn-google" onClick={signIn}>
-          <GoogleIcon />
-          Google로 로그인
-        </button>
-      ) : (
-        <button id="logout-btn" type="button" className="btn-dark-utility" onClick={signOut}>
-          {nickname ? <span id="user-nickname">{nickname}</span> : null}
-          <LogOut size={14} />
-          로그아웃
-        </button>
-      )}
+      <button id="login-btn" type="button" className="btn-google" onClick={signIn}>
+        <GoogleIcon />
+        {t("Google로 로그인", "Sign in with Google")}
+      </button>
     </div>
   );
 }

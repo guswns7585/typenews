@@ -5,6 +5,13 @@
       "firebase.json",
       "**/.*",
       "**/node_modules/**"
+    ],
+    "redirects": [
+      {
+        "source": "**",
+        "destination": "https://typenews-vercel.vercel.app/",
+        "type": 302
+      }
     ]
   },
   "functions": [

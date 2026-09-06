@@ -4,13 +4,17 @@
 
 `app/`은 라우팅과 서버 경계를 담당하고, 화면이 길어지면 `components/<feature>/`로 조합을 분리합니다. 타이핑 계산·콘텐츠 선택처럼 DOM이 필요 없는 코드는 `features/`에 둡니다.
 
+- `features/typing-engine/`: 입력과 원문의 정렬(`alignment.ts`), 속도·정확도 계산(`metrics.ts`). 판정 규칙은 전부 여기 모여 있고 컴포넌트는 결과만 그립니다.
+- `features/content/`: 문장·뉴스 로딩과 정제.
+- `features/integrity/`: 부정행위 탐지용 행동 집계. 자세한 설계는 `supabase/docs/abuse-detection.md`.
+
 ## 상태 소유권
 
 - `useTypingStore`: 현재 문장, 입력, 모드, 세션 카운트
 - `useSettingsStore`: 사용자별 타이핑 옵션과 UI 설정
 - Supabase: 로그인 사용자, 프로필, 월간 점수, 랭킹의 영속 상태
 
-대량 `suspicious_records`는 일반 클라이언트 상태에 적재하지 않습니다.
+탐지 관련 상태는 Zustand에 두지 않습니다. `features/integrity/behavior-tracker.ts`가 모듈 싱글턴으로 집계만 들고 있다가 서버로 올리고, 결과(`abuse_signals`)는 관리자만 조회할 수 있습니다.
 
 ## 데이터 흐름
 

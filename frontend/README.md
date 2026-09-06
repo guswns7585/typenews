@@ -12,9 +12,12 @@ npm run dev
 `.env.local`에 아래 값을 설정합니다.
 
 ```env
-NEXT_PUBLIC_SUPABASE_URL=https://uptiosdwlopvrjbkyslp.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=...
+NEXT_PUBLIC_SUPABASE_URL=https://<project-ref>.supabase.co
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_...
 ```
+
+실제 값은 Supabase 대시보드의 **Connect** 버튼이나 Project Settings → API Keys에서 복사합니다.
+프로젝트 ref를 소스에 적어두지 마세요. 프로젝트를 다시 만들면 값이 바뀝니다.
 
 ## 구조
 
