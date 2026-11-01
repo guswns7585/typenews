@@ -1,6 +1,7 @@
 "use client";
 
 import { create } from "zustand";
+import { getLongformText, isLongformId, loadLongformProgress, saveLongformProgress, setActiveLongform } from "@/features/longform/longform-library";
 import type { ScriptureKind } from "@/features/scripture/scripture-library";
 import type { ContentItem, Language, NewsSector, TypingMode } from "@/lib/types";
 
@@ -49,6 +50,8 @@ type TypingState = {
   scriptureKind: ScriptureKind | null;
   /** 보관함 글 안에서 지금 치고 있는 줄. */
   scriptureLine: number;
+  scriptureCompleted: boolean;
+  practiceRevision: number;
   sentence: ContentItem | null;
   input: string;
   startedAt: number | null;
@@ -88,13 +91,19 @@ export const useTypingStore = create<TypingState>((set) => ({
   scriptureId: null,
   scriptureKind: null,
   scriptureLine: 0,
+  scriptureCompleted: false,
+  practiceRevision: 0,
   sentence: null,
   input: "",
   startedAt: null,
   sessionCount: 0,
   sessionCounts: EMPTY_COUNTS,
   setMode: (language, mode, newsSectors, memeOnly = false) =>
-    set((state) => ({
+    set((state) => {
+      setActiveLongform(null);
+      return {
+      practiceRevision: state.practiceRevision + 1,
+      scriptureCompleted: false,
       language,
       mode,
       /* 모드와 무관하게 적용한다. 카테고리 선택은 뉴스 모드에 들어가기 전에도
@@ -111,9 +120,11 @@ export const useTypingStore = create<TypingState>((set) => ({
       sentence: null,
       input: "",
       startedAt: null,
-    })),
+      };
+    }),
   toggleNewsSector: (sector) =>
     set((state) => {
+      setActiveLongform(null);
       const current = state.newsSectors;
       let next: NewsSector[];
       if (sector === "all") {
@@ -125,6 +136,8 @@ export const useTypingStore = create<TypingState>((set) => ({
         next = [...current.filter((item) => item !== "all"), sector];
       }
       return {
+        practiceRevision: state.practiceRevision + 1,
+        scriptureCompleted: false,
         language: "kor",
         mode: "news",
         memeOnly: false,
@@ -139,20 +152,42 @@ export const useTypingStore = create<TypingState>((set) => ({
       };
     }),
   setScripture: (id, kind) =>
-    set({
+    set((state) => {
+      const text = id && isLongformId(id) ? getLongformText(id) : undefined;
+      const progress = text ? loadLongformProgress(text) : undefined;
+      setActiveLongform(text?.id ?? null);
+      return {
+      practiceRevision: state.practiceRevision + 1,
+      ...(text ? { language: text.language } : {}),
       scriptureId: id,
-      scriptureKind: id ? (kind ?? null) : null,
-      scriptureLine: 0,
+      scriptureKind: id ? (isLongformId(id) ? "long" : (kind ?? null)) : null,
+      scriptureLine: progress?.line ?? 0,
+      scriptureCompleted: progress?.completed ?? false,
       /* 필사는 밈과 함께 켜지지 않는다. 둘 다 점수를 주지 않지만 문장 출처가 다르다. */
       memeOnly: false,
       sentence: null,
       input: "",
       startedAt: null,
+      };
     }),
   setScriptureLine: (line) =>
-    set({ scriptureLine: Math.max(0, line), sentence: null, input: "", startedAt: null }),
+    set((state) => {
+      if (!Number.isFinite(line)) return {};
+      const text = state.scriptureId && isLongformId(state.scriptureId) ? getLongformText(state.scriptureId) : undefined;
+      if (text) {
+        if (state.scriptureCompleted) return {};
+        const progress = loadLongformProgress(text);
+        progress.line = Math.max(0, Math.floor(line));
+        saveLongformProgress(text, progress);
+      }
+      return { scriptureLine: Math.max(0, Math.floor(line)), sentence: null, input: "", startedAt: null };
+    }),
   setSentence: (sentence) => set({ sentence, input: "", startedAt: null }),
-  setInput: (input) => set((state) => ({ input, startedAt: state.startedAt ?? Date.now() })),
+  setInput: (input) =>
+    set((state) => ({
+      input,
+      startedAt: input.length === 0 ? null : (state.startedAt ?? Date.now()),
+    })),
   completeSentence: (countSession = true) =>
     set((state) => {
       if (!countSession) return { input: "", startedAt: null };

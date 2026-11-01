@@ -13,6 +13,7 @@ import {
 import type { Language, NewsSector, TypingMode } from "@/lib/types";
 import { useUiLanguage } from "@/lib/ui-language";
 import { useTypingStore } from "@/stores/use-typing-store";
+import styles from "./mode-controls.module.css";
 
 /* 밈은 별도 TypingMode가 아니라 단문의 필터다. 기록도 단문으로 남는다.
    밈 문장이 sentences에 mode='short'로 들어 있고, 모드를 늘리면 점수 적립
@@ -82,32 +83,37 @@ function anchorTo(button: HTMLElement): Omit<OpenState, "kind"> {
 }
 
 /** 버튼에 적을 요약. 여러 개를 켜면 첫 이름과 나머지 개수로 줄인다. */
-function sectorSummary(selected: NewsSector[], english: boolean) {
-  if (selected.includes("all")) return english ? "All" : "전체";
+function sectorSummary(
+  selected: NewsSector[],
+  localize: (ko: string, en: string) => string,
+) {
+  if (selected.includes("all")) return localize("전체", "All");
   const labels = selected.map(
     (id) => {
       const option = newsSectorOptions.find((entry) => entry.id === id);
-      return (english ? option?.labelEn : option?.label) ?? id;
+      return option ? localize(option.label, option.labelEn) : id;
     },
   );
-  if (labels.length === 0) return english ? "All" : "전체";
+  if (labels.length === 0) return localize("전체", "All");
   if (labels.length === 1) return labels[0];
-  return english ? `${labels[0]} +${labels.length - 1}` : `${labels[0]} 외 ${labels.length - 1}`;
+  return localize(`${labels[0]} 외 ${labels.length - 1}`, `${labels[0]} +${labels.length - 1}`);
 }
 
 type ModeControlsProps = {
+  onOpenLongform: (language: Language) => void;
   /** 고른 종류의 필사 보관함을 연다. 목록 관리는 dock이 아니라 별도 패널이 맡는다. */
   onOpenScripture: (kind: ScriptureKind) => void;
   /** 가사는 한 곡을 오래 치므로 시작 전에 보관함에서 직접 고른다. */
   onOpenSongPicker: () => void;
 };
 
-export function ModeControls({ onOpenScripture, onOpenSongPicker }: ModeControlsProps) {
-  const { isEnglish, t } = useUiLanguage();
+export function ModeControls({ onOpenScripture, onOpenSongPicker, onOpenLongform }: ModeControlsProps) {
+  const { t } = useUiLanguage();
   const reduceDropdownMotion = useReducedMotion();
   const scriptureId = useTypingStore((s) => s.scriptureId);
   const scriptureKind = useTypingStore((s) => s.scriptureKind);
   const isScripture = scriptureId !== null;
+  const isLongform = scriptureId?.startsWith("longform:") ?? false;
   const language = useTypingStore((s) => s.language);
   const mode = useTypingStore((s) => s.mode);
   const newsSectors = useTypingStore((s) => s.newsSectors);
@@ -278,7 +284,7 @@ export function ModeControls({ onOpenScripture, onOpenSongPicker }: ModeControls
           id="korModeBtn"
           type="button"
           className="chip-pill"
-          data-selected={!isScripture && language === "kor" && mode !== "news"}
+          data-selected={language === "kor" && (isLongform || (!isScripture && mode !== "news"))}
           aria-expanded={open?.kind === "kor"}
           onClick={(event) => toggle("kor", event)}
         >
@@ -295,10 +301,10 @@ export function ModeControls({ onOpenScripture, onOpenSongPicker }: ModeControls
       {panel(
         "kor",
         "kor-mode-dropdown-content mode-dropdown-content",
-        korModes.map((item) => {
+        <>{korModes.map((item) => {
           /* 단문과 밈은 mode가 같으므로 memeOnly까지 봐야 구분된다. */
           const isCurrent =
-            language === "kor" && mode === item.mode && memeOnly === Boolean(item.memeOnly);
+            !isScripture && language === "kor" && mode === item.mode && memeOnly === Boolean(item.memeOnly);
           return (
             <div
               key={`${item.mode}-${item.memeOnly ? "meme" : "regular"}`}
@@ -308,12 +314,17 @@ export function ModeControls({ onOpenScripture, onOpenSongPicker }: ModeControls
               aria-current={isCurrent ? "true" : undefined}
               onClick={() => pick("kor", item.mode, item.memeOnly)}
             >
-              {isEnglish ? item.labelEn : item.label}
+              {t(item.label, item.labelEn)}
               {/* 점수가 안 쌓인다는 것은 고르기 전에 알아야 한다. */}
               {item.memeOnly ? <span className="dropdown-item-note">{t("점수 획득 불가", "No score")}</span> : null}
             </div>
           );
-        }),
+        })}
+          <button type="button" className={styles.longformButton} data-selected={isLongform && language === "kor"} data-dock-interactive="true" onClick={() => { setOpen(null); onOpenLongform("kor"); }}>
+            {t("긴 글", "Long-form")}
+            <span className="dropdown-item-note">{t("점수 획득 불가", "No score")}</span>
+          </button>
+        </>,
       )}
 
       <div className="eng-mode-dropdown mode-dropdown" ref={engRef}>
@@ -321,11 +332,11 @@ export function ModeControls({ onOpenScripture, onOpenSongPicker }: ModeControls
           id="engModeBtn"
           type="button"
           className="chip-pill"
-          data-selected={!isScripture && language === "eng" && mode !== "news"}
+          data-selected={language === "eng" && (isLongform || (!isScripture && mode !== "news"))}
           aria-expanded={open?.kind === "eng"}
           onClick={(event) => toggle("eng", event)}
         >
-          English
+          {t("English", "English")}
           <motion.span
             className="dropdown-chevron"
             animate={{ rotate: open?.kind === "eng" ? 180 : 0 }}
@@ -338,17 +349,22 @@ export function ModeControls({ onOpenScripture, onOpenSongPicker }: ModeControls
       {panel(
         "eng",
         "eng-mode-dropdown-content mode-dropdown-content",
-        engModes.map((item) => (
+        <>{engModes.map((item) => (
           <div
             key={item.mode}
             data-mode={item.mode}
-            data-selected={language === "eng" && mode === item.mode}
-            aria-current={language === "eng" && mode === item.mode ? "true" : undefined}
+            data-selected={!isScripture && language === "eng" && mode === item.mode}
+            aria-current={!isScripture && language === "eng" && mode === item.mode ? "true" : undefined}
             onClick={() => pick("eng", item.mode)}
           >
-            {item.label}
+            {t(item.label, item.label)}
           </div>
-        )),
+        ))}
+          <button type="button" className={styles.longformButton} data-selected={isLongform && language === "eng"} data-dock-interactive="true" onClick={() => { setOpen(null); onOpenLongform("eng"); }}>
+            Long-form
+            <span className="dropdown-item-note">{t("점수 획득 불가", "No score")}</span>
+          </button>
+        </>,
       )}
 
       <div className="dropdown" ref={newsRef}>
@@ -364,7 +380,7 @@ export function ModeControls({ onOpenScripture, onOpenSongPicker }: ModeControls
           }}
         >
           <span className="chip-label">
-            {isNewsMode ? `${t("뉴스", "News")}(${sectorSummary(newsSectors, isEnglish)})` : t("뉴스 한국어", "Korean News")}
+            {isNewsMode ? `${t("뉴스", "News")}(${sectorSummary(newsSectors, t)})` : t("뉴스 한국어", "Korean News")}
           </span>
           <motion.span
             className="dropdown-chevron"
@@ -399,7 +415,7 @@ export function ModeControls({ onOpenScripture, onOpenSongPicker }: ModeControls
                   }
                 }}
               >
-                <span className="dropdown-check-label">{isEnglish ? sector.labelEn : sector.label}</span>
+                <span className="dropdown-check-label">{t(sector.label, sector.labelEn)}</span>
               </div>
             );
           })}
@@ -423,7 +439,7 @@ export function ModeControls({ onOpenScripture, onOpenSongPicker }: ModeControls
           id="scriptureBtn"
           type="button"
           className="chip-pill"
-          data-selected={isScripture}
+          data-selected={isScripture && !isLongform}
           aria-expanded={open?.kind === "scripture"}
           title={t("내가 넣은 글로 연습합니다 · 점수 획득 불가", "Practice your own text · no score")}
           onClick={(event) => toggle("scripture", event)}
@@ -457,9 +473,9 @@ export function ModeControls({ onOpenScripture, onOpenSongPicker }: ModeControls
                 aria-disabled={unavailable}
                 onClick={() => pickScripture(item.id)}
               >
-                {isEnglish ? ({ short: "Short", long: "Long", song: "Lyrics" } as const)[item.id] : item.label}
+                {t(item.label, ({ short: "Short", long: "Long", song: "Lyrics" } as const)[item.id])}
                 <span className="dropdown-item-note">
-                  {unavailable ? t("추가 필요", "Add first") : isEnglish ? `${count} saved` : `${count}개`}
+                  {unavailable ? t("추가 필요", "Add first") : t(`${count}개`, `${count} saved`)}
                 </span>
               </div>
             );

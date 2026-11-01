@@ -1,0 +1,23 @@
+.picker { position: fixed; inset: 0; margin: auto; width: min(640px, calc(100vw - 32px)); max-height: 85dvh; overflow: auto; padding: 24px; border: 1px solid #8886; border-radius: 8px; color: #252525; background: #fafafc; box-shadow: 0 24px 80px #0004; }
+:global(html[data-visual-theme="dark"]) .picker,
+:global(html[data-visual-theme="vscode"]) .picker,
+:global(html[data-visual-theme="terminal"]) .picker { color: #f2f3f5; background: #20232a; color-scheme: dark; }
+.picker::backdrop { background: #0006; backdrop-filter: blur(5px); }
+.header, .card { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.header h2 { margin: 0; font-size: 20px; }
+.picker button { cursor: pointer; padding: 10px 14px; border: 1px solid #8886; border-radius: 8px; background: transparent; color: inherit; }
+.picker button:disabled { opacity: .5; cursor: default; }
+.picker button:focus-visible, .picker input:focus-visible, .picker textarea:focus-visible { outline: 2px solid #487dbb; outline-offset: 3px; }
+.list, .form { display: grid; gap: 12px; margin-top: 20px; }
+.card > button:first-child { flex: 1; min-width: 0; display: grid; gap: 6px; text-align: start; overflow-wrap: anywhere; }
+.card button[aria-current] { border-color: #487dbb; }
+.card span, .picker p, .form > span { font-size: 13px; opacity: .8; }
+.form label { display: grid; gap: 6px; }
+.form input, .form textarea { width: 100%; box-sizing: border-box; padding: 10px; color: inherit; background: transparent; border: 1px solid #8886; border-radius: 8px; font: inherit; }
+.form textarea { resize: vertical; }
+.progress { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; margin: 8px 24px; font-size: 13px; }
+.progress button { background: transparent; color: inherit; padding: 6px 12px; border: 1px solid #8886; border-radius: 8px; cursor: pointer; }
+.progress > span { min-width: 0; overflow-wrap: anywhere; }
+.dial :global(.line-slot) { overflow-wrap: anywhere; flex-shrink: 0; }
+.sizer { position: absolute; inset: 0; width: 100%; visibility: hidden; pointer-events: none; overflow: hidden; }
+.sizer :global(.line-slot) { display: block; width: 100%; font-weight: 600; opacity: 1; transform: none; }

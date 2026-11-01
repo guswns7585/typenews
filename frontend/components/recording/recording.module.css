@@ -1,0 +1,47 @@
+.root { position: relative; display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; flex: 0 0 36px; color: inherit; }
+.dockButton, .icon { display: inline-flex; align-items: center; justify-content: center; border: 0; background: transparent; color: inherit; cursor: pointer; border-radius: 50%; width: 36px; height: 36px; flex-shrink: 0; }
+.dockButton:hover, .icon:hover { background: color-mix(in srgb, currentColor 10%, transparent); }
+.active, .elapsed { color: #c83535; }
+.sharing { position: absolute; top: calc(100% + 6px); right: 0; width: max-content; max-width: 230px; border: 1px solid #709e87; border-radius: 6px; padding: 4px 8px; background: #f0faf4; color: #246343; cursor: pointer; font-size: 11px; z-index: 10; }
+.elapsed { position: absolute; top: calc(100% + 6px); left: 50%; transform: translateX(-50%); display: inline-flex; align-items: center; gap: 5px; padding: 3px 6px; border-radius: 4px; background: #fafafc; white-space: nowrap; font-size: 12px; font-variant-numeric: tabular-nums; pointer-events: none; }
+.tooltip { position: absolute; bottom: calc(100% + 9px); left: 50%; transform: translateX(-50%); width: max-content; pointer-events: none; opacity: 0; background: #202124; color: white; border-radius: 6px; padding: 5px 9px; font-size: 12px; z-index: 10; }
+.root:has(.dockButton:hover) .tooltip, .root:has(.dockButton:focus-visible) .tooltip { opacity: 1; }
+.dialog { position: fixed; inset: 0; margin: auto; width: min(640px, calc(100vw - 32px)); max-height: calc(100dvh - 40px); overflow: auto; border: 1px solid #b8b8bf; border-radius: 8px; padding: 22px; background: #fafafc; color: #1d1d1f; box-shadow: 0 18px 70px #0003; font-size: 14px; line-height: 1.6; }
+.dialog::backdrop { background: #0007; backdrop-filter: blur(6px); }
+.header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+.header h2 { font-size: 19px; font-weight: 650; margin: 0; }
+.dialog p { margin: 12px 0; }
+.video { display: block; width: 100%; max-height: 45dvh; background: #000; border-radius: 8px; }
+.range { display: flex; flex-wrap: wrap; gap: 14px; margin: 16px 0; }
+.range label { flex: 1; min-width: 120px; display: grid; gap: 4px; }
+.range input { width: 100%; box-sizing: border-box; padding: 8px; border-radius: 7px; border: 1px solid #aaa; background: white; color: #1d1d1f; }
+.checkbox { display: flex; align-items: center; gap: 8px; padding: 8px 0; cursor: pointer; }
+.checkbox input { width: 18px; height: 18px; accent-color: #0066cc; }
+.actions { display: flex; justify-content: flex-end; gap: 8px; flex-wrap: wrap; margin-top: 16px; }
+.actions button, .progress button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 38px; padding: 7px 12px; border: 1px solid #b8b8bf; border-radius: 8px; background: white; color: #1d1d1f; cursor: pointer; font: inherit; }
+.actions button:last-child { background: #0066cc; color: white; border-color: #0066cc; }
+.root button:disabled, .dialog button:disabled { opacity: .45; cursor: default; }
+.root button:focus-visible, .dialog button:focus-visible, .dialog input:focus-visible { outline: 3px solid #0066cc; outline-offset: 3px; }
+.progress { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: 12px; }
+.progress progress { flex: 1; accent-color: #0066cc; }
+.error { color: #a32121; }
+.message { position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; width: min(520px, calc(100vw - 32px)); box-sizing: border-box; border: 1px solid #d9aaaa; padding: 10px 14px; border-radius: 8px; background: #fff5f5; color: #792222; z-index: 100; font-size: 13px; }
+.exportToast { position: fixed; right: 20px; bottom: 20px; display: flex; align-items: center; gap: 10px; width: min(390px, calc(100vw - 32px)); box-sizing: border-box; padding: 12px 14px; border: 1px solid #9aa7b0; border-radius: 10px; background: #fafafc; color: #252529; box-shadow: 0 12px 38px #0003; z-index: 120; font-size: 13px; }
+.exportToast > div { display: grid; gap: 6px; flex: 1; min-width: 0; }
+.exportToast strong { overflow-wrap: anywhere; font-weight: 600; }
+.exportToast progress { display: block; width: 100%; height: 6px; accent-color: #0066cc; }
+.exportToast > button:not(.icon) { min-height: 32px; flex: 0 0 auto; padding: 5px 9px; border: 1px solid #8886; border-radius: 6px; background: transparent; color: inherit; cursor: pointer; }
+.exportToast.done { border-color: #76a98e; color: #246343; }
+.exportToast.error { border-color: #d9aaaa; color: #792222; }
+.spinning { animation: recording-spin .9s linear infinite; }
+@keyframes recording-spin { to { transform: rotate(360deg); } }
+@media (prefers-color-scheme: dark) {
+  .dialog { background: #242426; color: #f5f5f7; border-color: #555; }
+  .range input, .actions button, .progress button { background: #333; color: #f5f5f7; border-color: #666; }
+  .actions button:last-child { background: #0066cc; }
+  .error { color: #ffb4b4; }
+  .exportToast { background: #29292c; color: #f5f5f7; border-color: #666; }
+  .exportToast.done { color: #8ed0aa; border-color: #527a63; }
+  .exportToast.error { color: #ffb4b4; border-color: #8b5555; }
+}
+@media (prefers-reduced-motion: reduce) { .spinning { animation: none; } }

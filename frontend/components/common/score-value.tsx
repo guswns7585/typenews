@@ -2,7 +2,9 @@
 
 import { useState } from "react";
 import { formatScore } from "@/features/typing-engine/format-score";
+import { hangulDayScoreText } from "@/lib/hangul-day";
 import { useUiLanguage } from "@/lib/ui-language";
+import { useHangulDayExperience } from "@/lib/use-hangul-day";
 
 type ScoreValueProps = {
   value: number;
@@ -20,8 +22,10 @@ type ScoreValueProps = {
  */
 export function ScoreValue({ value, unit = "", className }: ScoreValueProps) {
   const { locale, t } = useUiLanguage();
+  const hangulDay = useHangulDayExperience();
   const [expanded, setExpanded] = useState(false);
   const short = formatScore(value);
+  const localizedShort = hangulDay && locale === "ko" ? hangulDayScoreText(short) : short;
   const full = value.toLocaleString(locale === "en" ? "en-US" : "ko-KR");
   // 줄여도 같은 값이면 굳이 누를 수 있게 하지 않는다.
   const canToggle = short !== full;
@@ -41,7 +45,7 @@ export function ScoreValue({ value, unit = "", className }: ScoreValueProps) {
         setExpanded((current) => !current);
       }}
     >
-      {expanded ? full : short}
+      {expanded ? full : localizedShort}
     </button>
   );
 }

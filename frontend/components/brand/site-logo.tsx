@@ -1,13 +1,26 @@
 "use client";
 
+import { HangulDayLogo } from "@/components/brand/hangul-day-logo";
 import { LogoMark } from "@/components/brand/logo-mark";
+import { useHangulDayExperience } from "@/lib/use-hangul-day";
 
 type SiteLogoProps = {
   onClick?: () => void;
   clicked?: boolean;
 };
 
+export function CurrentLogoMark({ className }: { className?: string }) {
+  const hangulDay = useHangulDayExperience();
+
+  return hangulDay ? (
+    <HangulDayLogo className={className} />
+  ) : (
+    <LogoMark className={className} />
+  );
+}
+
 export function SiteLogo({ onClick, clicked }: SiteLogoProps) {
+
   return (
     <h1
       id="site-title"
@@ -20,7 +33,7 @@ export function SiteLogo({ onClick, clicked }: SiteLogoProps) {
       }}
     >
       {/* 인라인 SVG라 커스텀 배경의 글자·버튼 색이 로고에도 그대로 반영된다. */}
-      <LogoMark className="site-logo-svg" />
+      <CurrentLogoMark className="site-logo-svg" />
     </h1>
   );
 }

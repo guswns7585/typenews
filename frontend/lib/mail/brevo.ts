@@ -17,6 +17,7 @@ export type MailConfig = {
   apiKey: string;
   senderEmail: string;
   senderName: string;
+  replyToEmail: string;
 };
 
 /**
@@ -33,6 +34,7 @@ export function readMailConfig(): MailConfig | null {
     apiKey,
     senderEmail,
     senderName: process.env.BREVO_SENDER_NAME || "타입뉴스",
+    replyToEmail: process.env.BREVO_REPLY_TO_EMAIL || "typenews902@gmail.com",
   };
 }
 
@@ -56,6 +58,7 @@ export async function sendWinnerMail(
       },
       body: JSON.stringify({
         sender: { name: config.senderName, email: config.senderEmail },
+        replyTo: { email: config.replyToEmail },
         to: [{ email: to.email, name: to.name }],
         subject: winnerMailSubject(input),
         // 안내문은 서식이 필요 없다. 평문이라야 스팸 판정도 덜 받는다.

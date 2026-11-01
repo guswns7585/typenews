@@ -1,8 +1,9 @@
-const functions = require('firebase-functions');
-const admin = require('firebase-admin');
-admin.initializeApp(); // Firebase Admin SDK 초기화
+const functions = require('firebase-functions/v1');
+const { initializeApp } = require('firebase-admin/app');
+const { getFirestore, Timestamp } = require('firebase-admin/firestore');
+initializeApp(); // Firebase Admin SDK 초기화
 
-const db = admin.firestore();
+const db = getFirestore();
 
 // 매월 마지막 날 오후 11시 30분에 실행되는 함수
 exports.archiveMonthlyRankings = functions.pubsub.schedule('0 13 L * *')
@@ -38,7 +39,7 @@ exports.archiveMonthlyRankings = functions.pubsub.schedule('0 13 L * *')
 
             // 2. 아카이브할 문서 데이터 준비
             const archiveDocData = {
-                archiveDate: admin.firestore.Timestamp.fromDate(now), // 아카이빙 된 정확한 날짜와 시간
+                archiveDate: Timestamp.fromDate(now), // 아카이빙 된 정확한 날짜와 시간
                 yearMonth: yearMonth,
                 rankings: rankingsData, // 랭킹 배열
                 totalParticipants: snapshot.size // 해당 월에 기록된 총 사용자 수 (선택 사항)

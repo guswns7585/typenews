@@ -1,13 +1,14 @@
-const admin = require("firebase-admin");
+const { cert, initializeApp } = require("firebase-admin/app");
+const { getFirestore } = require("firebase-admin/firestore");
 
 // JSON 파일과 backfillNicknames.js가 같은 폴더에 있다고 가정
 const serviceAccount = require("./typenews-dbe9c-firebase-adminsdk-fbsvc-68fc058201.json");
 
-admin.initializeApp({
-  credential: admin.credential.cert(serviceAccount), // 서비스 계정 키로 인증
+initializeApp({
+  credential: cert(serviceAccount), // 서비스 계정 키로 인증
 });
 
-const db = admin.firestore();
+const db = getFirestore();
 
 
 async function backfillNicknames() {

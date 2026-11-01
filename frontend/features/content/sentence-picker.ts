@@ -1,4 +1,9 @@
 import { getSupabaseClient } from "@/lib/supabase/client";
+import { seoulDateKey, usesHangulDayExperience } from "@/lib/hangul-day";
+import {
+  HANGUL_DAY_OPENERS,
+  visibleSeasonalContent,
+} from "@/features/content/hangul-day-content";
 import type {
   ContentItem,
   Language,
@@ -75,6 +80,9 @@ type BundleSentence = { id: number | null; text: string };
 const localCache = new Map<string, BundleSentence[]>();
 const newsCache = new Map<string, ContentItem[]>();
 const usedIndexes = new Map<string, Set<number>>();
+
+/** 한 탭에서 한글날마다 단문·장문 첫 글에 각각 한 번만 보여준다. */
+const usedHangulDayOpeners = new Set<string>();
 
 function randomId() {
   return typeof crypto !== "undefined" && "randomUUID" in crypto
@@ -162,14 +170,20 @@ async function fetchDbSentences(language: Language, mode: LocalMode, filter: Bun
  */
 const inFlight = new Map<string, Promise<BundleSentence[]>>();
 
+/** 개발 미리보기와 한글날에는 포함하고, 평상시 운영 화면에서는 완전히 숨긴다. */
+function visibleLocalItems(items: BundleSentence[], language: Language, mode: LocalMode) {
+  if (language !== "kor") return items;
+  return visibleSeasonalContent(items, mode, usesHangulDayExperience());
+}
+
 async function loadLocalItems(language: Language, mode: LocalMode, filter: BundleFilter) {
   const cacheKey = bundleKeyFor(language, mode, filter);
 
   const cached = localCache.get(cacheKey);
-  if (cached) return cached;
+  if (cached) return visibleLocalItems(cached, language, mode);
 
   const pending = inFlight.get(cacheKey);
-  if (pending) return pending;
+  if (pending) return visibleLocalItems(await pending, language, mode);
 
   const task = (async () => {
     const fromDb = await fetchDbSentences(language, mode, filter);
@@ -186,7 +200,7 @@ async function loadLocalItems(language: Language, mode: LocalMode, filter: Bundl
 
   inFlight.set(cacheKey, task);
   try {
-    return await task;
+    return visibleLocalItems(await task, language, mode);
   } finally {
     inFlight.delete(cacheKey);
   }
@@ -288,6 +302,24 @@ async function loadNewsItems(
 
 async function pickLocalSentence(language: Language, mode: LocalMode, filter: BundleFilter) {
   const data = await loadLocalItems(language, mode, filter);
+  const hangulDayOpenerKey = `${seoulDateKey()}:${mode}`;
+
+  if (
+    language === "kor" &&
+    (mode === "short" || mode === "long") &&
+    filter !== "meme" &&
+    usesHangulDayExperience() &&
+    !usedHangulDayOpeners.has(hangulDayOpenerKey)
+  ) {
+    usedHangulDayOpeners.add(hangulDayOpenerKey);
+    const text = HANGUL_DAY_OPENERS[mode];
+    const stored = data.find((item) => item.text === text);
+    return {
+      id: randomId(),
+      text,
+      sentenceId: stored?.id ?? undefined,
+    } satisfies ContentItem;
+  }
 
   if (mode === "word") {
     /* 이 함수는 프리페치 호환용이다. 실제 단어 다이얼은 loadWordPool의 개별 ID를

@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, RotateCcw } from "lucide-react";
 import {
   useCallback,
   useEffect,
@@ -12,6 +12,8 @@ import {
 import { SiteLogo } from "@/components/brand/site-logo";
 import { useAuthProfile } from "@/components/auth/auth-button";
 import { ScriptureMediaView } from "@/components/scripture/scripture-media-view";
+import longformStyles from "@/components/longform/longform.module.css";
+import { completeLongformSegment, getActiveLongform, getLongformText, isLongformId, loadLongformLibrary, loadLongformProgress, LONGFORM_UPDATED_EVENT, pickRandomNextLongform, restartLongform, summarizeLongformProgress } from "@/features/longform/longform-library";
 import { TypingLayoutStage } from "@/components/typing/typing-layout-stage";
 import { imageForSentence } from "@/features/content/sentence-images";
 import { loadWordPool, pickSentence, prefetchBundles } from "@/features/content/sentence-picker";
@@ -44,6 +46,10 @@ import { calculateMetrics } from "@/features/typing-engine/metrics";
 import { MILESTONE_VISIBLE_MS, milestoneFor } from "@/features/typing-engine/milestones";
 import { shouldSubmitTypingKey } from "@/features/typing-engine/submission-key";
 import { seoulMonthId } from "@/lib/month";
+import {
+  millisecondsUntilNextSeoulDay,
+  usesHangulDayExperience,
+} from "@/lib/hangul-day";
 import { useUiLanguage } from "@/lib/ui-language";
 import type { ContentItem, TypingMode, TypingSettings } from "@/lib/types";
 import type { WordItem } from "@/features/content/word-stream";
@@ -275,7 +281,7 @@ function preventClipboard(event: Event) {
 function onClipboardPaste(event: Event) {
   if (isClipboardAllowed(event.target)) return;
   // 막힌 시도만 센다. 보관함 입력칸에 붙여 넣는 것은 어뷰징 신호가 아니다.
-  behaviorTracker.notePasteAttempt();
+  if (!useTypingStore.getState().scriptureId) behaviorTracker.notePasteAttempt();
   event.preventDefault();
 }
 
@@ -306,6 +312,8 @@ export function TypingWorkspace() {
   const scriptureId = useTypingStore((state) => state.scriptureId);
   const scriptureKind = useTypingStore((state) => state.scriptureKind);
   const scriptureLine = useTypingStore((state) => state.scriptureLine);
+  const scriptureCompleted = useTypingStore((state) => state.scriptureCompleted);
+  const practiceRevision = useTypingStore((state) => state.practiceRevision);
   const setScripture = useTypingStore((state) => state.setScripture);
   const setScriptureLine = useTypingStore((state) => state.setScriptureLine);
   const sessionCount = useTypingStore((state) => state.sessionCount);
@@ -327,6 +335,9 @@ export function TypingWorkspace() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [frequentWeakWords, setFrequentWeakWords] = useState<Set<string>>(new Set());
   const [isComposing, setIsComposing] = useState(false);
+  /* macOS Chrome은 한글 조합 중 Space로 제출해도 compositionend/input을 뒤늦게
+     보낼 수 있다. 그 커밋이 다음 단어 입력으로 들어오지 않게 같은 프레임만 막는다. */
+  const discardImeCommitRef = useRef(false);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const inputRevealRef = useRef<HTMLDivElement>(null);
   const surfaceRef = useRef<HTMLDivElement>(null);
@@ -349,6 +360,14 @@ export function TypingWorkspace() {
    *      세션 통계를 흔들면 어뷰징 판정 자체가 무뎌진다.
    */
   const isScripture = scriptureId !== null;
+  const isLongform = isLongformId(scriptureId);
+
+  useEffect(() => {
+    const state = useTypingStore.getState();
+    if (state.practiceRevision !== 0 || state.scriptureId) return;
+    const active = getActiveLongform();
+    if (active) state.setScripture(active.id, "long");
+  }, []);
 
   /* 단어 모드는 문장처럼 한 덩어리로 끝나지 않고 다이얼처럼 계속 흐른다.
      큐와 위치를 직접 들고, 현재 위치의 단어를 sentence로 흘려보내
@@ -378,6 +397,7 @@ export function TypingWorkspace() {
   const [wordPool, setWordPool] = useState<WordItem[]>([]);
   const [wordQueue, setWordQueue] = useState<WordItem[]>([]);
   const [wordIndex, setWordIndex] = useState(0);
+  const [seasonVersion, setSeasonVersion] = useState(0);
   /* 단어 하나마다 서버에 보내면 초당 한 번꼴이 되어 과하다.
      원본이 단어 모드를 5문장 단위로 묶었던 것처럼 여기서도 모아서 보낸다. */
   const wordBatchRef = useRef<WordBatch>(emptyWordBatch());
@@ -386,6 +406,37 @@ export function TypingWorkspace() {
   /* flushWordBatch는 모드 전환 cleanup에서 불리므로 그 시점의 최신 submitScore가
      필요하다. submitScore는 렌더마다 새로 만들어지니 ref로 들고 있는다. */
   const submitScoreRef = useRef<((args: SubmitScoreArgs) => void) | null>(null);
+
+  /* 열린 탭이 한국 자정을 넘기면 현재 문장과 단어 큐도 즉시 새 날짜 기준으로
+     다시 만든다. 그래야 한글날 전용 내용이 10월 10일 화면에 남지 않는다. */
+  useEffect(() => {
+    let timer = 0;
+    let previous = usesHangulDayExperience();
+
+    const sync = () => {
+      window.clearTimeout(timer);
+      const now = new Date();
+      const next = usesHangulDayExperience(now);
+      if (next !== previous) {
+        previous = next;
+        requestRef.current += 1;
+        behaviorTracker.resetSentence();
+        typingAnalyticsTracker.resetContent();
+        setHistory([]);
+        setWordQueue([]);
+        useTypingStore.setState({ sentence: null, input: "", startedAt: null });
+        setSeasonVersion((version) => version + 1);
+      }
+      timer = window.setTimeout(sync, millisecondsUntilNextSeoulDay(now) + 100);
+    };
+
+    timer = window.setTimeout(sync, millisecondsUntilNextSeoulDay() + 100);
+    document.addEventListener("visibilitychange", sync);
+    return () => {
+      window.clearTimeout(timer);
+      document.removeEventListener("visibilitychange", sync);
+    };
+  }, []);
 
   /**
    * 지금 종류의 보관함 글 전체. localStorage에만 있어서 서버 렌더에서는 읽을 수 없다.
@@ -410,6 +461,13 @@ export function TypingWorkspace() {
   /* 가사는 영상·음원과 함께 한 곡을 끝까지 치는 모드다. 줄 다이얼과 재생 화면이
      여기만 붙고, 곡이 끝나면 다음 글로 넘어가지 않는다. */
   const isScriptureSong = isScripture && scriptureKind === "song";
+  const usesLineDial = isScriptureSong || isLongform;
+  const longformSummary = useMemo(() => {
+    const text = scriptureId && isLongformId(scriptureId) ? getLongformText(scriptureId) : undefined;
+    return text ? summarizeLongformProgress(loadLongformProgress(text)) : null;
+    // Storage is external to React; these revisions invalidate its cached snapshot.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [scriptureId, scriptureLine, scriptureCompleted, practiceRevision, libraryVersion]);
 
   const focusInput = useCallback(() => {
     inputRef.current?.focus({ preventScroll: true });
@@ -417,6 +475,9 @@ export function TypingWorkspace() {
 
   const loadNext = useCallback(
     async (rememberCurrent = true) => {
+      const initial = useTypingStore.getState();
+      if (initial.scriptureId || initial.language !== language || initial.mode !== mode) return;
+      const revision = initial.practiceRevision;
       const requestId = requestRef.current + 1;
       requestRef.current = requestId;
       behaviorTracker.resetSentence();
@@ -435,16 +496,16 @@ export function TypingWorkspace() {
           newsBodyAmount: settings.newsBodyAmount,
         });
 
-        if (requestRef.current !== requestId) return;
+        if (requestRef.current !== requestId || useTypingStore.getState().practiceRevision !== revision) return;
         if (rememberCurrent && sentence) {
           setHistory((items) => [...items.slice(-39), sentence]);
         }
         setSentence(nextSentence);
       } catch (error) {
-        if (requestRef.current !== requestId) return;
+        if (requestRef.current !== requestId || useTypingStore.getState().practiceRevision !== revision) return;
         setLoadError(error instanceof Error ? error.message : "문장을 불러오지 못했습니다.");
       } finally {
-        if (requestRef.current === requestId) setIsLoading(false);
+        if (requestRef.current === requestId && useTypingStore.getState().practiceRevision === revision) setIsLoading(false);
       }
     },
     [
@@ -493,7 +554,7 @@ export function TypingWorkspace() {
     const nextPreference = `${settings.newsTypingTarget}:${settings.newsBodyAmount}`;
     if (nextPreference === newsPreferenceRef.current) return;
     newsPreferenceRef.current = nextPreference;
-    if (mode !== "news") return;
+    if (mode !== "news" || isScripture) return;
 
     const timer = window.setTimeout(() => {
       requestRef.current += 1;
@@ -501,7 +562,7 @@ export function TypingWorkspace() {
       useTypingStore.setState({ sentence: null, input: "", startedAt: null });
     }, 0);
     return () => window.clearTimeout(timer);
-  }, [mode, settings.newsTypingTarget, settings.newsBodyAmount]);
+  }, [mode, isScripture, settings.newsTypingTarget, settings.newsBodyAmount]);
 
   useEffect(() => {
     if (sentence || isWordMode || isScripture) return undefined;
@@ -513,11 +574,18 @@ export function TypingWorkspace() {
 
   // 보관함에서 저장·삭제가 일어나면 다시 읽는다.
   useEffect(() => {
-    function onUpdated() {
+    function onUpdated(event: Event) {
+      if (event instanceof StorageEvent && event.key !== null && event.key !== "typenews.scripture.v1") return;
       setLibraryVersion((version) => version + 1);
     }
     window.addEventListener(SCRIPTURE_UPDATED_EVENT, onUpdated);
-    return () => window.removeEventListener(SCRIPTURE_UPDATED_EVENT, onUpdated);
+    window.addEventListener(LONGFORM_UPDATED_EVENT, onUpdated);
+    window.addEventListener("storage", onUpdated);
+    return () => {
+      window.removeEventListener(SCRIPTURE_UPDATED_EVENT, onUpdated);
+      window.removeEventListener(LONGFORM_UPDATED_EVENT, onUpdated);
+      window.removeEventListener("storage", onUpdated);
+    };
   }, []);
 
   /* 지금 종류의 글을 보관함에서 읽어 온다. 고른 글이 목록에 없으면(지웠거나
@@ -525,18 +593,24 @@ export function TypingWorkspace() {
   useEffect(() => {
     // effect 본문에서 곧바로 setState를 부르면 렌더가 연쇄된다. 한 틱 미룬다.
     const timer = window.setTimeout(() => {
+      if (useTypingStore.getState().practiceRevision !== practiceRevision) return;
       if (!scriptureId || !scriptureKind) {
         setScriptureItems([]);
         return;
       }
-      const items = loadLibrary().filter((item) => item.kind === scriptureKind);
+      const items = isLongformId(scriptureId)
+        ? loadLongformLibrary()
+        : loadLibrary().filter((item) => item.kind === scriptureKind);
+      requestRef.current += 1;
+      setIsLoading(false);
+      setLoadError(null);
       setScriptureItems(items);
       if (!items.some((item) => item.id === scriptureId)) {
         useTypingStore.getState().setScripture(null);
       }
     }, 0);
     return () => window.clearTimeout(timer);
-  }, [scriptureId, scriptureKind, libraryVersion]);
+  }, [scriptureId, scriptureKind, libraryVersion, practiceRevision]);
 
   /* 지금 줄을 타이핑 대상으로 넘긴다.
      sentenceId를 붙이지 않는다 — 서버에 없는 글이라 검산할 원문이 없고,
@@ -544,6 +618,8 @@ export function TypingWorkspace() {
   useEffect(() => {
     if (!isScripture || !scriptureLines.length) return undefined;
     const timer = window.setTimeout(() => {
+      const state = useTypingStore.getState();
+      if (state.practiceRevision !== practiceRevision || state.scriptureId !== scriptureId || state.scriptureLine !== scriptureLine) return;
       /* 글을 줄여서 저장하면 지금 줄이 원문 밖으로 나간다. 그러면 칠 문장이
          사라져 화면이 빈 채로 멈추므로 마지막 줄로 당겨온다. */
       if (scriptureLine >= scriptureLines.length) {
@@ -556,7 +632,7 @@ export function TypingWorkspace() {
       });
     }, 0);
     return () => window.clearTimeout(timer);
-  }, [isScripture, scriptureId, scriptureLines, scriptureLine, setSentence, setScriptureLine]);
+  }, [isScripture, scriptureId, scriptureLines, scriptureLine, setSentence, setScriptureLine, practiceRevision]);
 
   /* 다른 모드의 문장 묶음을 한가할 때 하나씩 미리 받아둔다. 모드를 바꿀 때의
      대기를 없앤다. 지금 쓰는 모드는 제외해서 첫 문장 로드와 경쟁하지 않게 한다.
@@ -597,7 +673,7 @@ export function TypingWorkspace() {
     return () => {
       active = false;
     };
-  }, [isWordMode, language]);
+  }, [isWordMode, language, seasonVersion]);
 
   // 현재 위치의 단어를 타이핑 대상으로 넘긴다.
   useEffect(() => {
@@ -632,13 +708,14 @@ export function TypingWorkspace() {
    */
   const moveScriptureLine = useCallback(
     (delta: number) => {
+      if (isLongform && useTypingStore.getState().scriptureCompleted) return;
       if (!scriptureLines.length) return;
       const next = scriptureLine + delta;
       if (next >= 0 && next < scriptureLines.length) {
         setScriptureLine(next);
         return;
       }
-      if (isScriptureSong || !scriptureKind || scriptureIndex < 0) return;
+      if (usesLineDial || !scriptureKind || scriptureIndex < 0) return;
 
       const step = next < 0 ? -1 : 1;
       if (scriptureItems.length <= 1) {
@@ -660,7 +737,8 @@ export function TypingWorkspace() {
       scriptureLines,
       scriptureLine,
       setScriptureLine,
-      isScriptureSong,
+      usesLineDial,
+      isLongform,
       scriptureKind,
       scriptureIndex,
       scriptureItems,
@@ -706,8 +784,12 @@ export function TypingWorkspace() {
     if (soundMode) preloadKeyboardSound();
   }, [soundMode]);
 
-  useEffect(() => registerIntegrityHandlers(), []);
-  useEffect(() => registerTypingAnalyticsHandlers(), []);
+  useEffect(() => {
+    if (!isScripture) return registerIntegrityHandlers();
+  }, [isScripture]);
+  useEffect(() => {
+    if (!isScripture) return registerTypingAnalyticsHandlers();
+  }, [isScripture]);
 
   /* 가상 커서.
      원본 타입뉴스처럼 글자 사이를 미끄러지듯 옮겨 다닌다.
@@ -787,6 +869,22 @@ export function TypingWorkspace() {
   const [cursorMeasureTick, setCursorMeasureTick] = useState(0);
 
   useLayoutEffect(() => {
+    if (!isLongform) return;
+    const dial = lineTrackRef.current?.closest<HTMLElement>(".line-dial");
+    const sizer = dial?.querySelector<HTMLElement>(`.${longformStyles.sizer}`);
+    if (!dial || !sizer) return;
+    const reserveTallestSentence = () => {
+      const fontSize = Number.parseFloat(getComputedStyle(dial).fontSize) || settings.fontSize;
+      const tallest = Math.max(0, ...Array.from(sizer.children, (node) => (node as HTMLElement).offsetHeight));
+      dial.style.height = `${Math.max(fontSize * 5.4, tallest + fontSize * 2.4)}px`;
+    };
+    reserveTallestSentence();
+    const observer = new ResizeObserver(reserveTallestSentence);
+    observer.observe(sizer);
+    return () => { observer.disconnect(); dial.style.height = ""; };
+  }, [isLongform, scriptureId, scriptureLines, settings.fontFamily, settings.fontSize]);
+
+  useLayoutEffect(() => {
     const track = lineTrackRef.current;
     if (!track) {
       lineIndexRef.current = -1;
@@ -841,7 +939,7 @@ export function TypingWorkspace() {
   }, [
     scriptureLine,
     scriptureLines,
-    isScriptureSong,
+    usesLineDial,
     sentence?.id,
     settings.fontFamily,
     settings.fontSize,
@@ -908,6 +1006,7 @@ export function TypingWorkspace() {
 
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
+      if (event.target instanceof HTMLElement && event.target.closest("dialog[open]")) return;
       /* 보관함·설정 같은 일반 입력칸에서는 단축키를 가로채지 않는다.
          Ctrl+V를 여기서 막으면 paste 이벤트가 오기도 전에 끝나고,
          Ctrl+A·Ctrl+C까지 잠기면 긴 가사를 손볼 수 없다. */
@@ -935,7 +1034,7 @@ export function TypingWorkspace() {
       if (!target) return;
       if (
         target.closest(
-          "button, a, input, textarea, select, audio, .settings-panel, .scripture-pip, .dropdown-content, .mode-dropdown-content, .sub-nav-frosted, .global-nav",
+          "button, a, input, textarea, select, audio, dialog[open], .settings-panel, .scripture-pip, .dropdown-content, .mode-dropdown-content, .sub-nav-frosted, .global-nav",
         )
       ) {
         return;
@@ -1072,11 +1171,11 @@ export function TypingWorkspace() {
      영어 문장에서 영어를 무시하면 칠 글자가 남지 않아 문장이 즉시 완료되어버린다.
      버튼을 잠그는 것만으로는 이전에 켜둔 값이 그대로 남으므로 여기서 무력화한다.
 
-     필사는 원문을 그대로 옮겨 적는 연습이라 애초에 글자를 빼지 않는다.
-     사용자가 넣은 글이라 언어를 알 수 없어서, 켜둔 채로 두면 영문 한 줄이
-     통째로 무시되어 아무것도 치지 않았는데 완료되는 일이 생긴다. */
+     사용자가 넣은 필사는 언어를 알 수 없어서, 켜둔 채로 두면 영문 한 줄이
+     통째로 무시되어 아무것도 치지 않았는데 완료되는 일이 생긴다. 기본 긴 글은
+     언어가 명확하므로 일반 문장과 같은 무시 옵션을 적용할 수 있다. */
   const effectiveSettings = useMemo(() => {
-    if (isScripture) {
+    if (isScripture && !isLongform) {
       return {
         ...settings,
         ignorePunctuation: false,
@@ -1086,7 +1185,7 @@ export function TypingWorkspace() {
       };
     }
     return language === "eng" ? { ...settings, ignoreEnglish: false } : settings;
-  }, [settings, language, isScripture]);
+  }, [settings, language, isScripture, isLongform]);
 
   const alignment = useMemo(
     () => alignInput(targetText, input, effectiveSettings),
@@ -1193,7 +1292,7 @@ export function TypingWorkspace() {
     }
     /* 가사 줄이 움직이는 동안 글자 좌표도 함께 이동한다. 중간 좌표에서 커서를
        재면 첨부 화면처럼 이전 시작점에 남으므로, 이동이 끝난 뒤 다시 잰다. */
-    if (isScriptureSong && lineAnimationRef.current?.playState === "running") {
+    if (usesLineDial && lineAnimationRef.current?.playState === "running") {
       cursor.style.opacity = "0";
       return;
     }
@@ -1239,7 +1338,7 @@ export function TypingWorkspace() {
     cursor.style.height = `${rect.height}px`;
     cursor.style.opacity = "1";
     cursor.style.transform = `translate(${x}px, ${y}px)`;
-  }, [alignment, settings.overlayMode, settings.fontFamily, settings.fontSize, sentence, isWordMode, isScriptureSong, cursorMeasureTick]);
+  }, [alignment, settings.overlayMode, settings.fontFamily, settings.fontSize, sentence, isWordMode, usesLineDial, cursorMeasureTick]);
 
   /**
    * 점수를 대기열에 담고 바로 보낸다.
@@ -1363,6 +1462,8 @@ export function TypingWorkspace() {
 
   function finishCurrentSentence() {
     if (!sentence || !canComplete) return;
+    const current = useTypingStore.getState();
+    if (current.practiceRevision !== practiceRevision || current.sentence?.id !== sentence.id || current.scriptureLine !== scriptureLine || current.scriptureCompleted) return;
 
     /**
      * 필사는 점수 경로에 아예 들어가지 않는다.
@@ -1377,6 +1478,35 @@ export function TypingWorkspace() {
      *    "필사로는 점수를 만들 수 없다"를 보장하는 가장 확실한 방법이다.
      */
     if (isScripture) {
+      if (isLongform && scriptureId) {
+        const text = getLongformText(scriptureId);
+        if (!text) return;
+        const finalMetrics = calculateMetrics(input, startedAt, alignment);
+        const saved = completeLongformSegment(text, scriptureLine, {
+          characters: Array.from(sentence.text).length,
+          elapsedMs: Math.round(finalMetrics.elapsedSeconds * 1000),
+          accuracy: finalMetrics.accuracy,
+        });
+        if (!saved) {
+          const latest = loadLongformProgress(text);
+          useTypingStore.setState({ scriptureLine: latest.line, scriptureCompleted: latest.completed, input: "", startedAt: null, sentence: null });
+          return;
+        }
+        if (saved.completed) {
+          const nextText = pickRandomNextLongform(text);
+          /* 모든 같은 언어 글을 이미 마쳤다면 선택된 글만 처음부터 다시 시작한다.
+             아직 끝내지 않은 글이 있으면 저장된 진행 위치에서 자연스럽게 이어 간다. */
+          if (loadLongformProgress(nextText).completed) restartLongform(nextText);
+          showMilestone(t(`긴 글 완료 · 다음 글: ${nextText.title}`, `Essay complete · Next: ${nextText.title}`));
+          setScripture(nextText.id, "long");
+          window.requestAnimationFrame(focusInput);
+          return;
+        }
+        // One synchronous store update prevents repeated Enter events advancing twice.
+        useTypingStore.setState({ scriptureLine: saved.line, scriptureCompleted: false, sentence: null, input: "", startedAt: null });
+        window.requestAnimationFrame(focusInput);
+        return;
+      }
       // 카운트는 올리지 않되 입력은 비워 다음 줄을 받을 준비를 한다.
       completeSentence(false);
       /* 가사는 곡의 마지막 줄에서 멈춘다. 단문·장문은 다음 글로 이어지므로
@@ -1387,6 +1517,8 @@ export function TypingWorkspace() {
         return;
       }
       window.setTimeout(() => {
+        const state = useTypingStore.getState();
+        if (state.practiceRevision !== practiceRevision || state.scriptureLine !== scriptureLine) return;
         moveScriptureLine(1);
         focusInput();
       }, 180);
@@ -1513,6 +1645,7 @@ export function TypingWorkspace() {
       focusInput();
     } else {
       window.setTimeout(() => {
+        if (useTypingStore.getState().practiceRevision !== practiceRevision) return;
         void loadNext(true);
         focusInput();
       }, 180);
@@ -1570,7 +1703,7 @@ export function TypingWorkspace() {
 
   const displayedCpm = isWordMode ? wordMeasuredCpm : metrics.cpm;
   const displayedWpm = Math.round(displayedCpm / 5);
-  const isInputDisabled = isLoading || Boolean(loadError) || !sentence;
+  const isInputDisabled = isLoading || Boolean(loadError) || !sentence || (isLongform && scriptureCompleted);
   /* 필사 중에는 mode가 news로 남아 있어도 뉴스 화면이 아니다. */
   const isNewsMode = mode === "news" && !isScripture;
   const isNewsTitleMode = isNewsMode && settings.newsTypingTarget === "title";
@@ -1591,7 +1724,7 @@ export function TypingWorkspace() {
   /* 다이얼에 올릴 세 줄. 위가 방금 친 줄, 가운데가 지금 칠 줄, 아래가 다음 줄이다.
      없는 줄(첫 줄의 위, 마지막 줄의 아래)은 칸을 만들지 않는다 — 트랙이 지금 칠
      줄을 가운데로 맞추므로 빈 칸을 넣지 않아도 자리가 흔들리지 않는다. */
-  const lineSlots = isScriptureSong
+  const lineSlots = usesLineDial
     ? [-1, 0, 1]
         .map((offset) => ({ offset, index: scriptureLine + offset }))
         .filter(({ index }) => index >= 0 && index < scriptureLines.length)
@@ -1651,6 +1784,26 @@ export function TypingWorkspace() {
         aria-hidden={!scriptureMedia}
       />
 
+      {isLongform && scripture ? (
+        <div className={longformStyles.progress} onClick={(event) => event.stopPropagation()}>
+          <span role="status" aria-live="polite">
+            <strong>{scripture.title}</strong>{" · "}
+            {scriptureCompleted ? t("완료", "Completed") : `${scriptureLine + 1} / ${scriptureLines.length}`}
+            {" · "}{Math.round((scriptureCompleted ? 1 : scriptureLine / Math.max(1, scriptureLines.length)) * 100)}%
+          </span>
+          {longformSummary && longformSummary.completedSegments > 0 ? (
+            <span>{t("완료 문장", "Finished segments")} {longformSummary.completedSegments} · {t("정확도", "Accuracy")} {longformSummary.accuracy}% · {Math.round(longformSummary.elapsedMs / 1000)}{t("초", "s")}</span>
+          ) : null}
+          <button type="button" title={t("처음부터", "Restart")} aria-label={t("처음부터", "Restart")} onClick={() => {
+            const text = scriptureId ? getLongformText(scriptureId) : undefined;
+            if (!text) return;
+            restartLongform(text);
+            setScripture(text.id, "long");
+            window.requestAnimationFrame(focusInput);
+          }}><RotateCcw size={16} aria-hidden="true" /></button>
+        </div>
+      ) : null}
+
       <div className="sentence-wrapper">
         <span id="milestone-text" className={milestone?.active ? "active" : undefined} aria-live="polite">
           {milestone?.text}
@@ -1662,7 +1815,7 @@ export function TypingWorkspace() {
           type="button"
           title={isScripture ? t("이전 줄", "Previous line") : t("이전 문장", "Previous prompt")}
           /* 가사는 곡 안에서만 오간다. 단문·장문은 앞 글로 이어지므로 항상 열려 있다. */
-          disabled={isScripture ? isScriptureSong && scriptureLine === 0 : !history.length}
+          disabled={isScripture ? (usesLineDial && scriptureLine === 0) || (isLongform && scriptureCompleted) : !history.length}
           onClick={(event) => {
             event.stopPropagation();
             goPrevious();
@@ -1675,7 +1828,7 @@ export function TypingWorkspace() {
             선 하나로만 나누고, 각자 테두리를 갖지 않는다. */}
         <div
           ref={surfaceRef}
-          className={`typing-surface${settings.overlayMode ? "" : " is-split"}${isWordMode ? " is-word" : ""}${isScriptureSong ? " is-line-dial" : ""}`}
+          className={`typing-surface${settings.overlayMode ? "" : " is-split"}${isWordMode ? " is-word" : ""}${usesLineDial ? " is-line-dial" : ""}`}
         >
           {/* key를 문장 id로 두면 문장이 바뀔 때마다 등장 애니메이션이 다시 재생된다.
               옆의 textarea는 형제라 리마운트되지 않아 포커스가 유지된다. */}
@@ -1684,7 +1837,7 @@ export function TypingWorkspace() {
             /* 다이얼(단어·가사)은 스스로 움직이므로 통째로 다시 마운트하면
                오히려 깜빡이고, 트랙이 새로 생겨 올라가는 애니메이션도 사라진다.
                문장 모드에서만 등장 애니메이션을 다시 태운다. */
-            key={isWordMode ? "word-dial" : isScriptureSong ? "line-dial" : (sentence?.id ?? "empty")}
+            key={isWordMode ? "word-dial" : usesLineDial ? `line-dial-${scriptureId}` : (sentence?.id ?? "empty")}
             /* 그림이 딸린 문장은 테두리가 한 번 반짝인다.
                key가 문장마다 바뀌어 이 요소가 다시 마운트되므로, 클래스만 붙여도
                CSS 애니메이션이 그때마다 처음부터 재생된다. */
@@ -1698,13 +1851,13 @@ export function TypingWorkspace() {
                 다음 문장을 받는 200ms 동안 화면을 비우면 글자가 깜빡인다.
                 그동안은 방금 친 문장을 그대로 두고 입력만 막는다
                 (isInputDisabled가 isLoading을 이미 본다). */}
-            {isLoading && !sentence ? (
+            {isLoading && !sentence && !(usesLineDial && scriptureLines.length > 0) ? (
               <span className="completed-message">{t("문장을 불러오는 중...", "Loading a prompt...")}</span>
             ) : null}
             {!isLoading && loadError ? <span className="completed-message">{loadError}</span> : null}
             {/* 빈 줄만 있는 글을 고르면 칠 것이 없다. 화면이 비어 멈춘 것처럼
                 보이지 않도록 이유를 적어 둔다. */}
-            {isScripture && !sentence && !loadError ? (
+            {isScripture && !sentence && !loadError && (!usesLineDial || scriptureLines.length === 0) ? (
               <span className="completed-message">
                 {scripture && scriptureLines.length === 0
                   ? t("이 글에는 칠 내용이 없습니다", "This text has no content to type")
@@ -1761,8 +1914,11 @@ export function TypingWorkspace() {
                    비우고 다음 틱에 새 줄을 넣으므로, sentence를 보면 그 한 틱 동안
                    다이얼이 사라진다. 그러면 트랙 노드가 새로 생겨 "이전에 가운데
                    있던 줄"의 기준을 잃고 올라가는 애니메이션이 재생되지 않는다. */}
-            {!loadError && isScriptureSong && scriptureLines.length > 0 ? (
-              <div className="line-dial" aria-label={t("가사 줄", "Lyrics lines")}>
+            {!loadError && usesLineDial && scriptureLines.length > 0 ? (
+              <div className={`line-dial${isLongform ? ` ${longformStyles.dial}` : ""}`} aria-label={isLongform ? t("긴 글 문장", "Essay sentences") : t("가사 줄", "Lyrics lines")}>
+                {isLongform ? <div className={longformStyles.sizer} aria-hidden="true">
+                  {scriptureLines.map((line, index) => <span className="line-slot" key={`measure-${index}`}>{line}</span>)}
+                </div> : null}
                 <div className="line-dial-track" ref={lineTrackRef}>
                   {lineSlots.map(({ offset, index }) => (
                     <span
@@ -1781,7 +1937,7 @@ export function TypingWorkspace() {
                 </div>
               </div>
             ) : null}
-            {!loadError && !isWordMode && !isScriptureSong && sentence && (!sentence.title || isNewsTitleMode)
+            {!loadError && !isWordMode && !usesLineDial && sentence && (!sentence.title || isNewsTitleMode)
               ? characterSpans
               : null}
             <span className="vscode-live-suffix" aria-hidden="true">&quot;;</span>
@@ -1804,7 +1960,14 @@ export function TypingWorkspace() {
             aria-label={t("타이핑 문장 입력", "Typing input")}
             value={input}
             disabled={isInputDisabled}
-            onChange={(event) => onChange(event.target.value)}
+            onChange={(event) => {
+              if (discardImeCommitRef.current) {
+                event.currentTarget.value = "";
+                setInput("");
+                return;
+              }
+              onChange(event.currentTarget.value);
+            }}
             /* 클립보드를 막아도 선택한 글자를 끌어다 놓으면 그대로 들어온다.
                붙여넣기와 똑같은 우회로라 같이 막고 같은 신호로 센다. */
             onDrop={(event) => {
@@ -1817,12 +1980,17 @@ export function TypingWorkspace() {
             }}
             onCompositionEnd={(event) => {
               setIsComposing(false);
+              if (discardImeCommitRef.current) {
+                event.currentTarget.value = "";
+                setInput("");
+                return;
+              }
               onChange(event.currentTarget.value);
             }}
             onKeyDown={(event) => {
               const nativeEvent = event.nativeEvent as KeyboardEvent;
               const isImeComposing = isComposing || nativeEvent.isComposing;
-              typingAnalyticsTracker.noteKey(
+              if (!isScripture) typingAnalyticsTracker.noteKey(
                 nativeEvent.code,
                 nativeEvent.ctrlKey || nativeEvent.altKey || nativeEvent.metaKey,
               );
@@ -1838,6 +2006,17 @@ export function TypingWorkspace() {
               }
               if (shouldSubmitTypingKey(event.key, canComplete, isImeComposing)) {
                 event.preventDefault();
+                if (isImeComposing) {
+                  discardImeCommitRef.current = true;
+                  setIsComposing(false);
+                  event.currentTarget.value = "";
+                  window.requestAnimationFrame(() => {
+                    discardImeCommitRef.current = false;
+                    if (inputRef.current) {
+                      inputRef.current.value = useTypingStore.getState().input;
+                    }
+                  });
+                }
                 finishCurrentSentence();
                 return;
               }
@@ -1868,6 +2047,7 @@ export function TypingWorkspace() {
           className="side-button icon-btn-circular"
           type="button"
           title={isScripture ? t("다음 줄", "Next line") : t("다음 문장", "Next prompt")}
+          disabled={isLongform && (scriptureCompleted || scriptureLine >= scriptureLines.length - 1)}
           onClick={(event) => {
             event.stopPropagation();
             goNext();
@@ -1884,12 +2064,12 @@ export function TypingWorkspace() {
 
       <div className="stats">
         <div>
-          SPD:{" "}
-          <span id="speed">{displayedCpm} CPM</span>
-          <span className="speed-wpm"> / {displayedWpm} WPM</span>
+          {t("SPD", "SPD")}:{" "}
+          <span id="speed">{displayedCpm} {t("CPM", "CPM")}</span>
+          <span className="speed-wpm"> / {displayedWpm} {t("WPM", "WPM")}</span>
         </div>
         <div>
-          ACC: <span id="accuracy">{metrics.accuracy}</span>
+          {t("ACC", "ACC")}: <span id="accuracy">{metrics.accuracy}</span>
         </div>
         {/* 필사는 세션 카운트에 들어가지 않으므로(점수 경로 밖) 그 자리에
             지금 몇 번째 줄인지를 보여준다. 진행도가 CNT보다 쓸모 있다.
@@ -1899,7 +2079,7 @@ export function TypingWorkspace() {
             title={
               [
                 scripture?.title || t("필사", "Practice"),
-                !isScriptureSong && scriptureItems.length > 1
+                !usesLineDial && scriptureItems.length > 1
                   ? (isEnglish ? `Text ${scriptureIndex + 1} / ${scriptureItems.length}` : `${scriptureIndex + 1} / ${scriptureItems.length}번째 글`)
                   : null,
               ]
@@ -1907,7 +2087,7 @@ export function TypingWorkspace() {
                 .join("\n")
             }
           >
-            LINE:{" "}
+            {t("LINE", "LINE")}:{" "}
             <span id="count">
               {scriptureLines.length ? scriptureLine + 1 : 0} / {scriptureLines.length}
             </span>
@@ -1918,7 +2098,7 @@ export function TypingWorkspace() {
              CNT가 무엇을 뜻하는지 알 수 없다. 지금 모드의 값을 보여주고
              나머지는 마우스를 올렸을 때 보인다. */
           <div title={sessionCountBreakdown}>
-            CNT: <span id="count">{sessionCounts[mode]}</span>
+            {t("CNT", "CNT")}: <span id="count">{sessionCounts[mode]}</span>
             <span className="stats-unit">{isWordMode ? t("단어", "word") : t("문장", "prompt")}</span>
           </div>
         )}
@@ -1931,10 +2111,10 @@ export function TypingWorkspace() {
           </span>
         </div>
         <div>
-          <span id="record-cpm">{lastRecord ? `${lastRecord.cpm} CPM` : ""}</span>
+          <span id="record-cpm">{lastRecord ? `${lastRecord.cpm} ${t("CPM", "CPM")}` : ""}</span>
         </div>
         <div>
-          <span id="record-accuracy">{lastRecord ? `ACC ${lastRecord.accuracy}%` : ""}</span>
+          <span id="record-accuracy">{lastRecord ? `${t("ACC", "ACC")} ${lastRecord.accuracy}%` : ""}</span>
         </div>
       </div>
       </div>

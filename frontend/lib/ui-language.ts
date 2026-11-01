@@ -1,7 +1,9 @@
 "use client";
 
 import { useCallback } from "react";
+import { hangulDayKoreanText } from "@/lib/hangul-day";
 import type { UiLocale } from "@/lib/types";
+import { useHangulDayExperience } from "@/lib/use-hangul-day";
 import { useSettingsStore } from "@/stores/use-settings-store";
 
 export type LocalizedText = { ko: string; en: string };
@@ -14,9 +16,15 @@ export function textFor(locale: UiLocale, ko: string, en: string) {
 export function useUiLanguage() {
   const locale = useSettingsStore((state) => state.uiLocale);
   const update = useSettingsStore((state) => state.update);
+  const hangulDay = useHangulDayExperience();
   const t = useCallback(
-    (ko: string, en: string) => textFor(locale, ko, en),
-    [locale],
+    (ko: string, en: string) => {
+      const localized = textFor(locale, ko, en);
+      return locale === "ko" && hangulDay
+        ? hangulDayKoreanText(localized)
+        : localized;
+    },
+    [hangulDay, locale],
   );
   const setLocale = useCallback(
     (next: UiLocale) => update({ uiLocale: next }),

@@ -387,9 +387,23 @@ export function TypingLayoutStage({ children }: TypingLayoutStageProps) {
   const [isDockDragging, setIsDockDragging] = useState(false);
   const [isMoveHandleHovered, setIsMoveHandleHovered] = useState(false);
   const [isDockHandleHovered, setIsDockHandleHovered] = useState(false);
+  const [recordingLayoutLocked, setRecordingLayoutLocked] = useState(false);
   const [isCenterSnapped, setIsCenterSnapped] = useState(false);
   const [draftFrameRect, setDraftFrameRect] = useState<TypingFrameRect | null>(null);
   const [isInteracting, setIsInteracting] = useState(false);
+
+  useEffect(() => {
+    const update = (event: Event) => {
+      const active = Boolean((event as CustomEvent<boolean>).detail);
+      setRecordingLayoutLocked(active);
+      if (active) {
+        setIsMoveHandleHovered(false);
+        setIsDockHandleHovered(false);
+      }
+    };
+    window.addEventListener("typenews:recording-layout-lock", update);
+    return () => window.removeEventListener("typenews:recording-layout-lock", update);
+  }, []);
   const activeFrameRect = draftFrameRect ?? typingFrameRect;
   const frameStage = useMemo(
     () => frameSizingArea(stageMetrics),
@@ -564,6 +578,7 @@ export function TypingLayoutStage({ children }: TypingLayoutStageProps) {
   }
 
   function startGroupTracking(event: React.PointerEvent<HTMLDivElement>) {
+    if (recordingLayoutLocked) return;
     event.preventDefault();
     event.stopPropagation();
     groupDragRef.current?.cleanup();
@@ -678,6 +693,7 @@ export function TypingLayoutStage({ children }: TypingLayoutStageProps) {
   }
 
   function startDockTracking(event: React.PointerEvent<HTMLDivElement>) {
+    if (recordingLayoutLocked) return;
     if (event.button !== 0) return;
     if (isDockInteractiveTarget(event.target)) return;
     const captureTarget = event.currentTarget;
@@ -789,6 +805,7 @@ export function TypingLayoutStage({ children }: TypingLayoutStageProps) {
   }
 
   function startFrameInteraction(kind: FrameInteractionKind, event: React.PointerEvent<HTMLDivElement>) {
+    if (recordingLayoutLocked) return;
     event.preventDefault();
     event.stopPropagation();
     interactionRef.current?.cleanup();
@@ -867,7 +884,7 @@ export function TypingLayoutStage({ children }: TypingLayoutStageProps) {
         layoutDependency={dockPlacement}
         layoutAnchor={{ x: 0.5, y: 0.5 }}
         style={{ x: groupX, y: groupY }}
-        animate={{ scale: isGroupDragging || isMoveHandleHovered ? 1.008 : 1 }}
+        animate={{ scale: !recordingLayoutLocked && (isGroupDragging || isMoveHandleHovered) ? 1.008 : 1 }}
         transition={{
           layout: reducedMotion ? { duration: 0 } : PLACEMENT_SPRING,
           scale: reducedMotion ? { duration: 0 } : HANDLE_HOVER_SPRING,
@@ -883,9 +900,9 @@ export function TypingLayoutStage({ children }: TypingLayoutStageProps) {
           layoutDependency={dockPlacement}
           layoutAnchor={{ x: 0.5, y: 0.5 }}
           style={{ x: dockX, y: dockY }}
-          animate={{ scale: isDockDragging || isDockHandleHovered ? 1.008 : 1 }}
+          animate={{ scale: !recordingLayoutLocked && (isDockDragging || isDockHandleHovered) ? 1.008 : 1 }}
           onPointerDown={startDockTracking}
-          onPointerEnter={() => setIsDockHandleHovered(true)}
+          onPointerEnter={() => { if (!recordingLayoutLocked) setIsDockHandleHovered(true); }}
           onPointerLeave={() => setIsDockHandleHovered(false)}
           transition={{
             layout: reducedMotion ? { duration: 0 } : PLACEMENT_SPRING,
@@ -912,7 +929,7 @@ export function TypingLayoutStage({ children }: TypingLayoutStageProps) {
             <div
               className="typing-frame-zone typing-frame-move-zone"
               aria-hidden="true"
-              onPointerEnter={() => setIsMoveHandleHovered(true)}
+              onPointerEnter={() => { if (!recordingLayoutLocked) setIsMoveHandleHovered(true); }}
               onPointerLeave={() => setIsMoveHandleHovered(false)}
               onPointerDown={startGroupTracking}
             />

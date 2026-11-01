@@ -1,11 +1,11 @@
-const admin = require("firebase-admin");
-const serviceAccount = require("./typenews-dbe9c-firebase-adminsdk-fbsvc-68fc058201.json");
+const { applicationDefault, initializeApp } = require("firebase-admin/app");
+const { getFirestore } = require("firebase-admin/firestore");
 
-admin.initializeApp({
-  credential: admin.credential.applicationDefault(), // Firebase CLI 인증 사용
+initializeApp({
+  credential: applicationDefault(), // Firebase CLI 인증 사용
 });
 
-const db = admin.firestore();
+const db = getFirestore();
 
 async function backfillNicknames() {
   const usersSnapshot = await db.collection("users").get();

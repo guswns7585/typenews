@@ -7,7 +7,7 @@ import { motion, useReducedMotion } from "motion/react";
 import { AdminNavLink } from "@/components/admin/admin-nav-link";
 import { AuthButton } from "@/components/auth/auth-button";
 import { NicknameSetupModal } from "@/components/auth/nickname-setup-modal";
-import { LogoMark } from "@/components/brand/logo-mark";
+import { CurrentLogoMark } from "@/components/brand/site-logo";
 import { PrizeClaim } from "@/components/event/prize-claim";
 import { AgentChrome, AgentWorkbench, type AgentTheme } from "@/components/layout/agent-workspace";
 import { FabMail } from "@/components/layout/fab-mail";
@@ -130,7 +130,7 @@ export function LegacyShell({ children, showTypingChrome = true, wide = false }:
       <header className="global-nav">
         <div className="global-nav-left">
           <Link href="/" className="global-nav-brand" aria-label={t("Type News 홈", "Type News home")}>
-            <LogoMark />
+            <CurrentLogoMark />
           </Link>
           <nav className="global-nav-links">
             <MotionLink

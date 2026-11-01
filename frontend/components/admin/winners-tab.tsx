@@ -45,6 +45,14 @@ type WinnerRow = {
   created_at: string;
 };
 
+type PrizePlanRow = {
+  prize_name: string;
+  prize_sponsor: string | null;
+  winner_count: number;
+  drawn_count: number;
+  remaining_count: number;
+};
+
 type Address = {
   recipient: string;
   phone: string;
@@ -261,15 +269,35 @@ export function WinnersTab() {
       setError("최종 데이터 이관과 운영 전환 전에는 추첨할 수 없습니다");
       return;
     }
+
+    setDrawing(true);
+    const { data: planData, error: planError } = await supabase.rpc("get_monthly_prize_plan", {
+      p_month_id: targetMonth,
+    });
+    if (planError) {
+      setDrawing(false);
+      setError(messageOf(planError, "추첨 경품 계획을 확인하지 못했습니다"));
+      return;
+    }
+    const plan = (planData ?? []) as PrizePlanRow[];
+    const remaining = plan.reduce((total, prize) => total + prize.remaining_count, 0);
+    if (plan.length === 0 || remaining === 0) {
+      setDrawing(false);
+      setNotice("새로 뽑을 경품이 없습니다");
+      return;
+    }
+    const prizeLines = plan.map(
+      (prize) => `${prize.prize_sponsor ?? "협찬사 미등록"} · ${prize.prize_name}: ${prize.remaining_count}명 남음 (${prize.winner_count}명 중 ${prize.drawn_count}명 확정)`,
+    );
     if (
       !window.confirm(
-        `${targetMonth} 추첨을 실행합니다.\n\n등수별 응모권(1등 8장 · 2등 5장 · 3등 3장 · 4~10등 2장 · 11~50등 1장)으로 뽑습니다.\n이미 주인이 있는 경품은 건너뜁니다.\n\n되돌리려면 당첨을 하나씩 취소해야 합니다.`,
+        `${targetMonth} 추첨을 실행합니다. 남은 자리 최대 ${remaining}명입니다.\n\n${prizeLines.join("\n")}\n\n등수별 응모권(1등 8장 · 2등 5장 · 3등 3장 · 4~10등 2장 · 11~50등 1장)으로 뽑습니다.\n이미 주인이 있는 자리는 건너뜁니다.\n\n되돌리려면 당첨을 하나씩 취소해야 합니다.`,
       )
     ) {
+      setDrawing(false);
       return;
     }
 
-    setDrawing(true);
     const { data, error: rpcError } = await supabase.rpc("admin_run_monthly_draw", {
       p_month_id: targetMonth,
     });

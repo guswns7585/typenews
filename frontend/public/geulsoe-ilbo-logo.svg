@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 813 263" role="img" aria-label="글쇠 일보">
+  <style>
+    .word { font-family: "Noto Serif KR", "Nanum Myeongjo", serif; font-size: 104px; font-weight: 900; letter-spacing: 0; }
+    .secondary { filter: drop-shadow(1.5px 1.5px 1.5px rgba(0, 0, 0, 0.32)); }
+  </style>
+  <path fill="var(--svg-black, #0a0a0a)" d="M441,255h-31V8h31c2.21,0,4-1.79,4-4s-1.79-4-4-4h-34.9s-.06,0-.1,0-.06,0-.1,0h-33.9c-2.21,0-4,1.79-4,4s1.79,4,4,4h30v247h-30c-2.21,0-4,1.79-4,4s1.79,4,4,4h69c2.21,0,4-1.79,4-4s-1.79-4-4-4Z"/>
+  <path fill="var(--svg-black, #0a0a0a)" d="M345,230H30c-12.13,0-22-9.87-22-22V57c0-12.13,9.87-22,22-22h315c2.21,0,4-1.79,4-4s-1.79-4-4-4H30C13.46,27,0,40.46,0,57v151C0,224.54,13.46,238,30,238h315c2.21,0,4-1.79,4-4s-1.79-4-4-4Z"/>
+  <path fill="var(--svg-black, #0a0a0a)" d="M467,35h315c12.13,0,22,9.87,22,22v151c0,12.13-9.87,22-22,22H467c-2.21,0-4,1.79-4,4s1.79,4,4,4h315c16.54,0,30-13.46,30-30V57c0-16.54-13.46-30-30-30H467c-2.21,0-4,1.79-4,4s1.79,4,4,4Z"/>
+  <text class="word" x="174" y="170" text-anchor="middle" fill="var(--svg-type, #0a0a0a)">글쇠</text>
+  <text class="word secondary" x="638" y="170" text-anchor="middle" fill="var(--svg-gray, #bfbfbf)">일보</text>
+</svg>

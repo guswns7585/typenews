@@ -1,0 +1,32 @@
+.longformButton {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  width: 100%;
+  padding: 7px 10px;
+  border: 0;
+  border-radius: 10px;
+  color: var(--color-ink);
+  background: transparent;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-align: left;
+  cursor: pointer;
+}
+.longformButton :global(.dropdown-item-note) {
+  margin-left: 10px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: -0.1px;
+  color: var(--color-ink-muted-48);
+}
+.longformButton:hover,
+.longformButton[data-selected="true"] { background: color-mix(in srgb, currentColor 9%, transparent); }
+.longformButton[data-selected="true"] :global(.dropdown-item-note) {
+  color: var(--color-ink);
+  opacity: 0.72;
+}
+.longformButton:focus-visible { outline: 2px solid currentColor; outline-offset: -2px; }

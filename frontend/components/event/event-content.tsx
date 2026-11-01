@@ -36,8 +36,9 @@ const fallbackPrizes: Prize[] = [
   { name: "포피즈", image: "/pride.jpg", href: "https://smartstore.naver.com/sandunart" },
   { name: "햄찌 키캡 (랜덤)", image: "/prize.jpg", href: "https://smartstore.naver.com/keypiece" },
   {
-    name: "HMX KD400 스위치",
-    fullName: "80Retros x HMX KD400 40gf 35개입 x 3개",
+    name: "ATK R1 SE+ 블랙 마우스",
+    image: "/atk-r1-se-plus-black.png",
+    href: "https://smartstore.naver.com/funkeys",
   },
 ];
 
@@ -125,7 +126,7 @@ export function EventContent() {
   return (
     <div id="event-tab">
       <div className="event-header">
-        <p>Type News Ranking</p>
+        <p>{t("Type News Ranking", "Type News Ranking")}</p>
         <h1>{t("이달의 랭킹 & 진행 중인 이벤트", "Monthly ranking & current event")}</h1>
       </div>
 
@@ -151,7 +152,7 @@ export function EventContent() {
 
           <div className="event-description">
             <p>{t("매월 순위를 집계하여 추첨을 진행하며, 점수가 높을수록 당첨 확률이 올라갑니다.", "A monthly draw is held from the ranking. A higher score increases your chance of winning.")}</p>
-            <p>{t("매월 1일 랭킹은 초기화되며, 당첨자는 로그인된 이메일로 개별 연락드립니다.", "The ranking resets on the first day of each month. Winners are contacted at their sign-in email.")}</p>
+            <p>{t("매월 1일 랭킹은 초기화되며, 당첨자는 계정에 등록된 이메일 주소로 개별 연락드립니다.", "The ranking resets on the first day of each month. Winners are contacted at their account email address.")}</p>
             <p>{t("일정 기간 응답이 없을 경우 당첨은 무효 처리되며, 재추첨이 진행됩니다.", "If a winner does not respond by the deadline, the prize may be redrawn.")}</p>
           </div>
 

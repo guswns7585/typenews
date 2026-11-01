@@ -1,6 +1,6 @@
 "use client";
 
-import { Eye, EyeOff, RefreshCw, ShieldOff, Trash2 } from "lucide-react";
+import { Eye, EyeOff, Maximize2, RefreshCw, ShieldOff, Trash2, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { formatDateTime } from "@/components/admin/labels";
 import {
@@ -26,6 +26,11 @@ type RemovedPaths = {
   thumbnail_path: string | null;
 };
 
+type PhotoPreview = {
+  displayName: string;
+  url: string;
+};
+
 export function ProfilePhotosTab() {
   const [rows, setRows] = useState<PhotoRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -33,6 +38,7 @@ export function ProfilePhotosTab() {
   const [notice, setNotice] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [reloadToken, setReloadToken] = useState(0);
+  const [preview, setPreview] = useState<PhotoPreview | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -58,6 +64,15 @@ export function ProfilePhotosTab() {
       active = false;
     };
   }, [reloadToken]);
+
+  useEffect(() => {
+    if (!preview) return;
+    function closeOnEscape(event: KeyboardEvent) {
+      if (event.key === "Escape") setPreview(null);
+    }
+    window.addEventListener("keydown", closeOnEscape);
+    return () => window.removeEventListener("keydown", closeOnEscape);
+  }, [preview]);
 
   function reload(message?: string) {
     setLoading(true);
@@ -181,17 +196,30 @@ export function ProfilePhotosTab() {
           const imageUrl = supabase
             ? publicProfilePhotoUrl(supabase, row.thumbnail_path ?? row.photo_path, row.updated_at)
             : null;
+          const fullImageUrl = supabase
+            ? publicProfilePhotoUrl(supabase, row.photo_path, row.updated_at)
+            : null;
           return (
             <li key={row.profile_id} className="admin-item card-style admin-photo-item">
-              <div className="admin-photo-preview" data-empty={!imageUrl}>
+              <button
+                type="button"
+                className="admin-photo-preview"
+                data-empty={!imageUrl}
+                disabled={!fullImageUrl}
+                onClick={() => fullImageUrl && setPreview({
+                  displayName: row.display_name,
+                  url: fullImageUrl,
+                })}
+                aria-label={fullImageUrl ? `${row.display_name} 프로필 사진 전체 보기` : undefined}
+              >
                 {imageUrl ? (
-                  // Stored files are already resized WebP assets.
                   // eslint-disable-next-line @next/next/no-img-element
                   <img src={imageUrl} alt={`${row.display_name} 프로필 사진`} />
                 ) : (
                   <span>{row.upload_blocked ? "삭제됨" : "사진 없음"}</span>
                 )}
-              </div>
+                {fullImageUrl ? <Maximize2 className="admin-photo-expand" size={17} /> : null}
+              </button>
               <div className="admin-item-meta">
                 <strong>{row.display_name}</strong>
                 <span>{row.email ?? "이메일 없음"}</span>
@@ -242,6 +270,40 @@ export function ProfilePhotosTab() {
           );
         })}
       </ul>
+
+      {preview ? (
+        <div
+          className="admin-photo-lightbox"
+          role="presentation"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) setPreview(null);
+          }}
+        >
+          <div
+            className="admin-photo-lightbox-dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-label={`${preview.displayName} 프로필 사진 전체 보기`}
+          >
+            <div className="admin-photo-lightbox-head">
+              <strong>{preview.displayName}</strong>
+              <button
+                type="button"
+                className="icon-btn-circular"
+                onClick={() => setPreview(null)}
+                aria-label="전체 사진 닫기"
+                autoFocus
+              >
+                <X size={18} />
+              </button>
+            </div>
+            <div className="admin-photo-lightbox-image">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={preview.url} alt={`${preview.displayName} 프로필 사진 전체`} />
+            </div>
+          </div>
+        </div>
+      ) : null}
     </section>
   );
 }

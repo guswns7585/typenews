@@ -1,4 +1,6 @@
 import type { Language } from "@/lib/types";
+import { usesHangulDayExperience } from "@/lib/hangul-day";
+import { HANGUL_DAY_WORDS } from "@/features/content/hangul-day-content";
 import { loadWordPool } from "./sentence-picker";
 
 export type WordItem = { text: string; sentenceId?: number };
@@ -29,8 +31,25 @@ function shuffle(items: WordItem[]) {
 export async function createWordQueue(language: Language) {
   const pool = await loadWordPool(language);
   if (!pool.length) throw new Error("단어 목록이 비어 있습니다.");
+
+  const firstPass = shuffle(pool);
+  if (language === "kor" && usesHangulDayExperience()) {
+    const holidayWords = HANGUL_DAY_WORDS.map(
+      (text) => pool.find((item) => item.text === text) ?? { text },
+    );
+    const holidaySet = new Set<string>(HANGUL_DAY_WORDS);
+    const remaining = firstPass.filter((item) => !holidaySet.has(item.text));
+    /* 다이얼은 DIAL_SIDE에서 시작한다. 목록 맨 앞이 아니라 시작 인덱스에 넣어야
+       첫 입력 단어가 한글날이 되고, 그다음 칸에 세종대왕이 이어진다. */
+    return [
+      ...remaining.slice(0, DIAL_SIDE),
+      ...holidayWords,
+      ...remaining.slice(DIAL_SIDE),
+      ...shuffle(pool),
+    ];
+  }
   // 왼쪽 칸을 처음부터 채워두려고 앞에 여유분을 둔다.
-  return [...shuffle(pool), ...shuffle(pool)];
+  return [...firstPass, ...shuffle(pool)];
 }
 
 export function refillIfNeeded(queue: WordItem[], index: number, pool: WordItem[]) {
