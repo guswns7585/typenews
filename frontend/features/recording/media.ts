@@ -5,7 +5,11 @@ export const FPS = 30;
 export function recorderFor(stream: MediaStream): MediaRecorder {
   const types = ["video/webm;codecs=vp9,opus", "video/webm;codecs=vp8,opus", "video/webm", "video/mp4"];
   const mimeType = types.find((type) => MediaRecorder.isTypeSupported(type));
-  return new MediaRecorder(stream, { ...(mimeType ? { mimeType } : {}), videoBitsPerSecond: 4_000_000 });
+  return new MediaRecorder(stream, {
+    ...(mimeType ? { mimeType } : {}),
+    videoBitsPerSecond: 4_000_000,
+    audioBitsPerSecond: 192_000,
+  });
 }
 
 export function stopTracks(stream?: MediaStream) {
