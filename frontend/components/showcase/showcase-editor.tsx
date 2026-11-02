@@ -1,7 +1,7 @@
 "use client";
 
-import { FileJson, ImagePlus, LoaderCircle, Music2, X } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { FileJson, ImagePlus, LoaderCircle, Music2, Trash2, X } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { inspectShowcaseAudio, prepareShowcaseImage, SHOWCASE_BUCKET } from "@/features/showcase/media";
 import { parseKeyxifJson, type KeyxifPreset } from "@/features/showcase/keyxif";
 import { SHOWCASE_BUILD_FIELDS, type MyShowcaseItem, type ShowcaseBuildInfo, type ShowcaseBuildKey } from "@/features/showcase/types";
@@ -11,7 +11,8 @@ import { useUiLanguage } from "@/lib/ui-language";
 import styles from "./showcase.module.css";
 
 type CreatedRow = { item_id: string; profile_id: string };
-type Props = { item?: MyShowcaseItem | null; onClose: () => void; onSaved: () => void };
+type EditableItem = MyShowcaseItem & { thumbnailUrl?: string | null };
+type Props = { item?: EditableItem | null; onClose: () => void; onSaved: () => void };
 
 export function ShowcaseEditor({ item, onClose, onSaved }: Props) {
   const { isEnglish, t } = useUiLanguage();
@@ -22,13 +23,19 @@ export function ShowcaseEditor({ item, onClose, onSaved }: Props) {
   const [build, setBuild] = useState<ShowcaseBuildInfo>(item?.build_info ?? {});
   const [image, setImage] = useState<File | null>(null);
   const [audio, setAudio] = useState<File | null>(null);
+  const [removeAudio, setRemoveAudio] = useState(false);
   const [keyxifPresets, setKeyxifPresets] = useState<KeyxifPreset[]>([]);
   const [keyxifSnapshot, setKeyxifSnapshot] = useState<Record<string, unknown> | null>(item?.keyxif_snapshot ?? null);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const editing = Boolean(item);
+  const localImageUrl = useMemo(() => image ? URL.createObjectURL(image) : null, [image]);
+  const audioPreview = useMemo(() => audio ? URL.createObjectURL(audio) : null, [audio]);
+  const imagePreview = localImageUrl ?? item?.thumbnailUrl ?? null;
 
   useEffect(() => { dialogRef.current?.showModal(); }, []);
+  useEffect(() => () => { if (localImageUrl) URL.revokeObjectURL(localImageUrl); }, [localImageUrl]);
+  useEffect(() => () => { if (audioPreview) URL.revokeObjectURL(audioPreview); }, [audioPreview]);
   const close = () => { if (!busy) onClose(); };
   const setBuildField = (key: ShowcaseBuildKey, value: string) => setBuild((current) => ({ ...current, [key]: value }));
 
@@ -83,7 +90,7 @@ export function ShowcaseEditor({ item, onClose, onSaved }: Props) {
       const base = `${profileId}/${itemId}`;
       const imagePath = `${base}/image.webp`;
       const thumbnailPath = `${base}/thumbnail.webp`;
-      const audioPath = preparedAudio ? `${base}/audio.${preparedAudio.extension}` : item?.audio_path ?? null;
+      const audioPath = removeAudio ? null : preparedAudio ? `${base}/audio.${preparedAudio.extension}` : item?.audio_path ?? null;
 
       if (preparedImage) {
         for (const upload of [{ path: imagePath, file: preparedImage.image }, { path: thumbnailPath, file: preparedImage.thumbnail }]) {
@@ -98,13 +105,14 @@ export function ShowcaseEditor({ item, onClose, onSaved }: Props) {
         uploadedPaths.push(audioPath);
       }
 
-      if (preparedImage || preparedAudio) {
+      if (preparedImage || preparedAudio || removeAudio) {
         const { error } = await supabase.rpc("save_my_showcase_media", {
           p_item_id: itemId, p_image_path: imagePath, p_thumbnail_path: thumbnailPath,
           p_image_width: preparedImage?.width ?? item?.image_width, p_image_height: preparedImage?.height ?? item?.image_height,
           p_image_bytes: preparedImage?.image.size ?? item?.image_bytes, p_thumbnail_bytes: preparedImage?.thumbnail.size ?? item?.thumbnail_bytes,
-          p_audio_path: audioPath, p_audio_mime: preparedAudio?.mime ?? item?.audio_mime ?? null,
-          p_audio_bytes: audio?.size ?? item?.audio_bytes ?? null, p_audio_duration_ms: preparedAudio?.durationMs ?? item?.audio_duration_ms ?? null,
+          p_audio_path: audioPath, p_audio_mime: removeAudio ? null : preparedAudio?.mime ?? item?.audio_mime ?? null,
+          p_audio_bytes: removeAudio ? null : audio?.size ?? item?.audio_bytes ?? null,
+          p_audio_duration_ms: removeAudio ? null : preparedAudio?.durationMs ?? item?.audio_duration_ms ?? null,
         });
         if (error) throw error;
       }
@@ -112,7 +120,7 @@ export function ShowcaseEditor({ item, onClose, onSaved }: Props) {
         const { error } = await supabase.rpc("publish_my_showcase_item", { p_item_id: itemId });
         if (error) throw error;
       }
-      if (editing && preparedAudio && item?.audio_path && item.audio_path !== audioPath) await supabase.storage.from(SHOWCASE_BUCKET).remove([item.audio_path]);
+      if (editing && (preparedAudio || removeAudio) && item?.audio_path && item.audio_path !== audioPath) await supabase.storage.from(SHOWCASE_BUCKET).remove([item.audio_path]);
       onSaved();
       onClose();
     } catch (error) {
@@ -133,8 +141,16 @@ export function ShowcaseEditor({ item, onClose, onSaved }: Props) {
         </header>
         <div className={styles.editorGrid}>
           <label className={styles.fieldWide}><span>{t("키보드 이름", "Keyboard name")} *</span><input required maxLength={80} value={title} onChange={(event) => setTitle(event.target.value)} /></label>
-          <label className={styles.uploadCard}><span className={styles.uploadIcon}><ImagePlus size={22} /></span><strong>{image?.name ?? (editing ? t("대표 사진 유지 또는 교체", "Keep or replace photo") : t("대표 사진 선택", "Choose representative photo"))}</strong><small>{t("JPG·PNG·WebP, 원본 12MB 이하", "JPG, PNG or WebP, source up to 12MB")}</small><input type="file" accept="image/jpeg,image/png,image/webp" required={!editing} onChange={(event) => setImage(event.target.files?.[0] ?? null)} /></label>
-          <label className={styles.uploadCard}><span className={styles.uploadIcon}><Music2 size={22} /></span><strong>{audio?.name ?? (item?.audio_path ? t("기존 타건음 유지 또는 교체", "Keep or replace typing sound") : t("타건음 선택 · 선택 사항", "Choose typing sound · optional"))}</strong><small>{t("WebM·OGG·MP3·M4A, 45초·1MB 이하", "WebM, OGG, MP3 or M4A, up to 45 sec / 1MB")}</small><input type="file" accept="audio/webm,audio/ogg,audio/mpeg,audio/mp4,.m4a" onChange={(event) => setAudio(event.target.files?.[0] ?? null)} /></label>
+          <label className={styles.uploadCard} data-preview={Boolean(imagePreview)}>{imagePreview ? (
+            // Selected local files and private signed URLs cannot use the static Next image loader.
+            // eslint-disable-next-line @next/next/no-img-element
+            <img className={styles.uploadPreview} src={imagePreview} alt="" />
+          ) : <span className={styles.uploadIcon}><ImagePlus size={22} /></span>}<strong>{image?.name ?? (editing ? t("대표 사진 유지 또는 교체", "Keep or replace photo") : t("대표 사진 선택", "Choose representative photo"))}</strong><small>{t("JPG·PNG·WebP, 원본 12MB 이하", "JPG, PNG or WebP, source up to 12MB")}</small><input type="file" accept="image/jpeg,image/png,image/webp" required={!editing} onChange={(event) => setImage(event.target.files?.[0] ?? null)} /></label>
+          <div className={styles.uploadGroup}>
+            <label className={styles.uploadCard}><span className={styles.uploadIcon}><Music2 size={22} /></span><strong>{audio?.name ?? (removeAudio ? t("타건음 삭제 예정", "Typing sound will be removed") : item?.audio_path ? t("기존 타건음 유지 또는 교체", "Keep or replace typing sound") : t("타건음 선택 · 선택 사항", "Choose typing sound · optional"))}</strong><small>{t("WebM·OGG·MP3·M4A, 45초·1MB 이하", "WebM, OGG, MP3 or M4A, up to 45 sec / 1MB")}</small><input type="file" accept="audio/webm,audio/ogg,audio/mpeg,audio/mp4,.m4a" onChange={(event) => { setAudio(event.target.files?.[0] ?? null); setRemoveAudio(false); }} /></label>
+            {audioPreview ? <audio controls preload="metadata" src={audioPreview} /> : null}
+            {item?.audio_path && !audio ? <button type="button" className={styles.removeMediaButton} data-active={removeAudio} onClick={() => setRemoveAudio((current) => !current)}><Trash2 size={14} />{removeAudio ? t("삭제 취소", "Keep existing sound") : t("기존 타건음 삭제", "Remove existing sound")}</button> : null}
+          </div>
           <section className={styles.keyxifImport}>
             <div><FileJson size={20} /><span><strong>{t("KeyXIF에서 가져오기", "Import from KeyXIF")}</strong><small>{t("KeyXIF 웹 백업 JSON의 빌드 프리셋을 불러옵니다.", "Import build presets from a KeyXIF web backup JSON.")}</small></span></div>
             <label className={styles.secondaryButton}>{t("JSON 선택", "Choose JSON")}<input type="file" accept="application/json,.json" onChange={(event) => void importKeyxif(event.target.files?.[0] ?? null)} /></label>
