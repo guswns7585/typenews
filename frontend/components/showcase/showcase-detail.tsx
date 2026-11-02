@@ -3,6 +3,7 @@
 import { Bookmark, ExternalLink, Flag, Heart, LoaderCircle, Music2, Share2, X } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
+import { useAuthProfile } from "@/components/auth/auth-button";
 import { signedShowcaseUrl } from "@/features/showcase/media";
 import { SHOWCASE_BUILD_FIELDS, type ShowcaseItem, type ShowcaseViewItem } from "@/features/showcase/types";
 import { publicProfilePhotoUrl } from "@/features/profile/profile-photo";
@@ -13,8 +14,8 @@ import styles from "./showcase.module.css";
 
 export function ShowcaseDetail({ itemId }: { itemId: string }) {
   const { isEnglish, t } = useUiLanguage();
+  const { signedIn } = useAuthProfile();
   const [item, setItem] = useState<ShowcaseViewItem | null>(null);
-  const [signedIn, setSignedIn] = useState(false);
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(true);
   const [reportOpen, setReportOpen] = useState(false);
@@ -23,40 +24,39 @@ export function ShowcaseDetail({ itemId }: { itemId: string }) {
     const supabase = getSupabaseClient();
     if (!supabase) return;
     let active = true;
-    void Promise.all([
-      supabase.rpc("get_showcase_item", { p_item_id: itemId }),
-      supabase.auth.getUser(),
-    ]).then(async ([result, auth]) => {
-      if (!active) return;
-      if (result.error) throw result.error;
-      const row = ((result.data ?? []) as ShowcaseItem[])[0];
-      if (!row) throw new Error(t("아카이브 항목을 찾을 수 없습니다", "Archive item not found"));
-      const [imageUrl, thumbnailUrl, audioUrl] = await Promise.all([
-        signedShowcaseUrl(supabase, row.image_path),
-        signedShowcaseUrl(supabase, row.thumbnail_path),
-        signedShowcaseUrl(supabase, row.audio_path),
-      ]);
-      if (!imageUrl || !thumbnailUrl) throw new Error(t("사진을 불러오지 못했습니다", "Could not load the photo"));
-      if (!active) return;
-      setSignedIn(Boolean(auth.data.user));
-      setItem({
-        ...row,
-        imageUrl,
-        thumbnailUrl,
-        audioUrl,
-        profilePhotoUrl: publicProfilePhotoUrl(supabase, row.profile_thumbnail_path, row.profile_photo_updated_at),
-      });
-    }).catch((error) => {
-      if (!active) return;
-      const detail = messageOf(error, t("아카이브 항목을 불러오지 못했습니다", "Could not load the archive item"));
-      setMessage(
-        detail.includes("get_showcase_item") && detail.includes("schema cache")
-          ? t("아카이브 데이터베이스를 준비하는 중입니다", "The archive database is being prepared")
-          : detail,
-      );
-    }).finally(() => { if (active) setLoading(false); });
+    void (async () => {
+      try {
+        const result = await supabase.rpc("get_showcase_item", { p_item_id: itemId });
+        if (!active) return;
+        if (result.error) throw result.error;
+        const row = ((result.data ?? []) as ShowcaseItem[])[0];
+        if (!row) throw new Error(t("아카이브 항목을 찾을 수 없습니다", "Archive item not found"));
+        const [imageUrl, thumbnailUrl, audioUrl] = await Promise.all([
+          signedShowcaseUrl(supabase, row.image_path),
+          signedShowcaseUrl(supabase, row.thumbnail_path),
+          signedShowcaseUrl(supabase, row.audio_path),
+        ]);
+        if (!imageUrl || !thumbnailUrl) throw new Error(t("사진을 불러오지 못했습니다", "Could not load the photo"));
+        if (!active) return;
+        setItem({
+          ...row,
+          imageUrl,
+          thumbnailUrl,
+          audioUrl,
+          profilePhotoUrl: publicProfilePhotoUrl(supabase, row.profile_thumbnail_path, row.profile_photo_updated_at),
+        });
+      } catch (error) {
+        if (!active) return;
+        const detail = messageOf(error, t("아카이브 항목을 불러오지 못했습니다", "Could not load the archive item"));
+        setMessage(
+          detail.includes("get_showcase_item") && detail.includes("schema cache")
+            ? t("아카이브 데이터베이스를 준비하는 중입니다", "The archive database is being prepared")
+            : detail,
+        );
+      } finally { if (active) setLoading(false); }
+    })();
     return () => { active = false; };
-  }, [itemId, t]);
+  }, [itemId, signedIn, t]);
 
   async function toggle(kind: "like" | "bookmark") {
     const supabase = getSupabaseClient();

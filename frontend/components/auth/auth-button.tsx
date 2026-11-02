@@ -41,6 +41,7 @@ export function useAuthProfile() {
   const [isConfigured] = useState(hasSupabaseConfig);
   const [email, setEmail] = useState<string | null>(null);
   const [nickname, setNickname] = useState<string | null>(null);
+  const [authReady, setAuthReady] = useState(() => !hasSupabaseConfig());
 
   useEffect(() => {
     if (!isConfigured) return;
@@ -69,11 +70,13 @@ export function useAuthProfile() {
     void supabase.auth.getSession().then(({ data }) => {
       if (!active) return;
       setEmail(data.session?.user?.email ?? null);
+      setAuthReady(true);
       void loadNickname(Boolean(data.session));
     });
 
     const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
       setEmail(session?.user?.email ?? null);
+      setAuthReady(true);
       void loadNickname(Boolean(session));
     });
 
@@ -99,7 +102,7 @@ export function useAuthProfile() {
     });
   }
 
-  return { isConfigured, email, nickname, signedIn: Boolean(email), signIn };
+  return { isConfigured, email, nickname, signedIn: Boolean(email), authReady, signIn };
 }
 
 /** 로그아웃. 로컬 기록 정리는 preferences-sync가 SIGNED_OUT 이벤트로 처리한다. */

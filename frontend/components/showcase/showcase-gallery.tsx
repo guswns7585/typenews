@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { ShowcaseEditor } from "@/components/showcase/showcase-editor";
 import { ShowcaseManager } from "@/components/showcase/showcase-manager";
+import { useAuthProfile } from "@/components/auth/auth-button";
 import { signedShowcaseUrl } from "@/features/showcase/media";
 import type { MyShowcaseItem, ShowcaseItem, ShowcaseViewItem } from "@/features/showcase/types";
 import { publicProfilePhotoUrl } from "@/features/profile/profile-photo";
@@ -38,10 +39,10 @@ async function resolveItem(item: ShowcaseItem): Promise<ShowcaseViewItem> {
 
 export function ShowcaseGallery({ profileId = null }: { profileId?: string | null }) {
   const { t } = useUiLanguage();
+  const { signedIn, authReady } = useAuthProfile();
   const [items, setItems] = useState<ShowcaseViewItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
-  const [signedIn, setSignedIn] = useState(false);
   const [editorOpen, setEditorOpen] = useState(false);
   const [managerOpen, setManagerOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<MyShowcaseItem | null>(null);
@@ -52,6 +53,7 @@ export function ShowcaseGallery({ profileId = null }: { profileId?: string | nul
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState<"newest" | "likes" | "bookmarks">("newest");
   const [bookmarkedOnly, setBookmarkedOnly] = useState(false);
+  const activeBookmarkFilter = signedIn && bookmarkedOnly;
 
   useEffect(() => {
     const timer = window.setTimeout(() => setQuery(queryDraft.trim()), 300);
@@ -69,15 +71,11 @@ export function ShowcaseGallery({ profileId = null }: { profileId?: string | nul
     else setLoading(true);
     setMessage("");
     try {
-      const [{ data, error }, { data: authData }] = await Promise.all([
-        supabase.rpc("get_showcase_feed", {
-          p_limit: PAGE_SIZE, p_offset: offset, p_profile_id: profileId,
-          p_query: query || null, p_sort: sort, p_bookmarked_only: bookmarkedOnly,
-        }),
-        supabase.auth.getUser(),
-      ]);
+      const { data, error } = await supabase.rpc("get_showcase_feed", {
+        p_limit: PAGE_SIZE, p_offset: offset, p_profile_id: profileId,
+        p_query: query || null, p_sort: sort, p_bookmarked_only: activeBookmarkFilter,
+      });
       if (error) throw error;
-      setSignedIn(Boolean(authData.user));
       const rows = (data ?? []) as ShowcaseItem[];
       if (profileId && rows[0]?.display_name) setProfileName(rows[0].display_name);
       const resolved = await Promise.all(rows.map(resolveItem));
@@ -94,7 +92,7 @@ export function ShowcaseGallery({ profileId = null }: { profileId?: string | nul
       setLoading(false);
       setLoadingMore(false);
     }
-  }, [bookmarkedOnly, profileId, query, sort, t]);
+  }, [activeBookmarkFilter, profileId, query, sort, t]);
 
   useEffect(() => {
     /* The initial state already represents loading. Start the external request
@@ -118,14 +116,14 @@ export function ShowcaseGallery({ profileId = null }: { profileId?: string | nul
     const result = ((data ?? []) as { active: boolean; count: number }[])[0];
     if (!result) return;
     setItems((current) => current.flatMap((item) => item.item_id === itemId
-      ? (kind === "bookmark" && bookmarkedOnly && !result.active ? [] : [{
+      ? (kind === "bookmark" && activeBookmarkFilter && !result.active ? [] : [{
           ...item,
           ...(kind === "like"
             ? { liked_by_me: result.active, like_count: result.count }
             : { bookmarked_by_me: result.active, bookmark_count: result.count }),
         }])
       : item));
-    if (kind === "bookmark" && bookmarkedOnly && !result.active) setTotal((current) => Math.max(0, current - 1));
+    if (kind === "bookmark" && activeBookmarkFilter && !result.active) setTotal((current) => Math.max(0, current - 1));
   }
 
   return (
@@ -139,7 +137,8 @@ export function ShowcaseGallery({ profileId = null }: { profileId?: string | nul
         </div>
         <div className={styles.heroActions}>
           {signedIn ? <button type="button" className={styles.secondaryButton} onClick={() => setManagerOpen(true)}><FolderCog size={17} />{t("내 아카이브 관리", "Manage my archive")}</button> : null}
-          <button type="button" className={styles.primaryButton} onClick={() => {
+          <button type="button" className={styles.primaryButton} disabled={!authReady} onClick={() => {
+            if (!authReady) return;
             if (!signedIn) { setMessage(t("키보드 등록은 로그인 후 사용할 수 있습니다", "Sign in to add a keyboard")); return; }
             setEditingItem(null); setEditorOpen(true);
           }}><ImagePlus size={17} />{t("키보드 등록", "Add keyboard")}</button>
@@ -151,7 +150,7 @@ export function ShowcaseGallery({ profileId = null }: { profileId?: string | nul
         <div className={styles.discoveryControls}>
           <label className={styles.archiveSearch}><Search size={15} aria-hidden="true" /><input type="search" maxLength={80} value={queryDraft} onChange={(event) => setQueryDraft(event.target.value)} placeholder={t("키보드·빌드·작성자 검색", "Search keyboards, builds, authors")} aria-label={t("아카이브 검색", "Search archive")} /></label>
           <select value={sort} onChange={(event) => setSort(event.target.value as typeof sort)} aria-label={t("아카이브 정렬", "Sort archive")}><option value="newest">{t("최신순", "Newest")}</option><option value="likes">{t("좋아요순", "Most liked")}</option><option value="bookmarks">{t("북마크순", "Most bookmarked")}</option></select>
-          {!profileId && signedIn ? <button type="button" className={styles.bookmarkFilter} data-active={bookmarkedOnly} aria-pressed={bookmarkedOnly} onClick={() => setBookmarkedOnly((current) => !current)}><Bookmark size={15} fill={bookmarkedOnly ? "currentColor" : "none"} />{t("내 북마크", "My bookmarks")}</button> : null}
+          {!profileId && signedIn ? <button type="button" className={styles.bookmarkFilter} data-active={activeBookmarkFilter} aria-pressed={activeBookmarkFilter} onClick={() => setBookmarkedOnly((current) => !current)}><Bookmark size={15} fill={activeBookmarkFilter ? "currentColor" : "none"} />{t("내 북마크", "My bookmarks")}</button> : null}
           <button type="button" className={styles.iconButton} aria-label={t("새로고침", "Refresh")} disabled={loading} onClick={() => void load(0)}>
           <RefreshCw className={loading ? styles.spinning : undefined} size={17} />
           </button>
@@ -207,8 +206,8 @@ export function ShowcaseGallery({ profileId = null }: { profileId?: string | nul
       ) : (
         <div className={styles.empty}>
           <ImagePlus size={30} />
-          <strong>{query || bookmarkedOnly ? t("조건에 맞는 키보드가 없습니다", "No keyboards match these filters") : t("아직 기록된 키보드가 없습니다", "No keyboards in the archive yet")}</strong>
-          <span>{query || bookmarkedOnly ? t("검색어나 필터를 바꿔 보세요.", "Try another search or filter.") : t("첫 번째 키보드를 올려 보세요.", "Add the first keyboard.")}</span>
+          <strong>{query || activeBookmarkFilter ? t("조건에 맞는 키보드가 없습니다", "No keyboards match these filters") : t("아직 기록된 키보드가 없습니다", "No keyboards in the archive yet")}</strong>
+          <span>{query || activeBookmarkFilter ? t("검색어나 필터를 바꿔 보세요.", "Try another search or filter.") : t("첫 번째 키보드를 올려 보세요.", "Add the first keyboard.")}</span>
         </div>
       )}
 
