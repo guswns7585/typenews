@@ -10,6 +10,12 @@
 .primaryButton:disabled, .secondaryButton:disabled, .loadMore:disabled, .iconButton:disabled { opacity: .48; cursor: default; }
 .toolbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
 .toolbar strong { font-size: 13px; color: var(--color-ink-muted-80); }
+.discoveryControls { display: flex; min-width: 0; align-items: center; justify-content: flex-end; gap: 7px; }
+.archiveSearch { display: flex; width: min(320px, 32vw); min-height: 36px; align-items: center; gap: 7px; padding: 0 10px; border: 1px solid rgba(92,67,68,.18); border-radius: var(--radius-pill); color: var(--color-ink-muted-48); background: rgba(255,255,255,.24); }
+.archiveSearch input { width: 100%; min-width: 0; border: 0; outline: 0; color: var(--color-ink); background: transparent; font: inherit; font-size: 12px; }
+.discoveryControls select, .bookmarkFilter { min-height: 36px; padding: 7px 10px; border: 1px solid rgba(92,67,68,.18); border-radius: var(--radius-pill); color: var(--color-ink-muted-80); background: rgba(255,255,255,.24); cursor: pointer; font: inherit; font-size: 12px; }
+.bookmarkFilter { display: inline-flex; align-items: center; gap: 5px; }
+.bookmarkFilter[data-active="true"] { color: #8d3652; background: rgba(255,214,226,.42); }
 .iconButton { display: inline-grid; width: 36px; height: 36px; place-items: center; border: 0; border-radius: 50%; color: var(--color-ink); background: var(--typenews-button); cursor: pointer; }
 .pageMessage, .formMessage { margin: 12px 0; padding: 10px 13px; border: 1px solid rgba(166,81,84,.22); border-radius: var(--radius-sm); color: var(--color-ink-muted-80); background: rgba(255,245,243,.52); font-size: 13px; overflow-wrap: anywhere; }
 .grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; }
@@ -129,6 +135,9 @@
   .hero { align-items: stretch; flex-direction: column; padding: 22px; }
   .heroActions { align-items: stretch; flex-direction: column; }
   .grid { grid-template-columns: 1fr; }
+  .toolbar { align-items: stretch; flex-direction: column; gap: 9px; }
+  .discoveryControls { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; }
+  .archiveSearch { width: auto; grid-column: 1 / -1; }
   .editor form { padding: 18px; }
   .editorGrid { grid-template-columns: 1fr; }
   .fieldWide, .buildSection { grid-column: auto; }

@@ -40,3 +40,8 @@ Implement this feature independently from `feature/longform-recording`. The init
 - [x] KeyXIF web-backup JSON parser with preset selection and safe field mapping.
 - [x] Local PNG collage exporter for up to 10 selected keyboards.
 - [x] Author-specific archive view linked from author names.
+- [x] Search across keyboard names, build details and authors; newest/like/bookmark sorting.
+- [x] Signed-in bookmark-only archive view.
+- [x] Native share sheet with clipboard fallback on archive detail pages.
+- [x] Customizable collage order, theme, image fit, captions and optional author name.
+- [x] Local media previews and explicit removal of an existing typing-sound file.

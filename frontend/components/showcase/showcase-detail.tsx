@@ -1,6 +1,6 @@
 "use client";
 
-import { Bookmark, ExternalLink, Flag, Heart, LoaderCircle, Music2, X } from "lucide-react";
+import { Bookmark, ExternalLink, Flag, Heart, LoaderCircle, Music2, Share2, X } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { signedShowcaseUrl } from "@/features/showcase/media";
@@ -77,6 +77,23 @@ export function ShowcaseDetail({ itemId }: { itemId: string }) {
     } : current);
   }
 
+  async function shareItem() {
+    if (!item) return;
+    const share = { title: `${item.title} · TypeNews Archive`, text: item.description.slice(0, 120), url: window.location.href };
+    try {
+      if (navigator.share) {
+        await navigator.share(share);
+        setMessage(t("공유했습니다", "Shared"));
+      } else {
+        await navigator.clipboard.writeText(share.url);
+        setMessage(t("아카이브 주소를 복사했습니다", "Archive link copied"));
+      }
+    } catch (error) {
+      if (error instanceof DOMException && error.name === "AbortError") return;
+      setMessage(t("주소를 복사하지 못했습니다", "Could not copy the archive link"));
+    }
+  }
+
   if (loading) return <div className={styles.loading}><LoaderCircle className={styles.spinning} />{t("아카이브 항목을 여는 중입니다", "Opening archive item")}</div>;
   if (!item) return <div className={styles.empty}><strong>{message || t("아카이브 항목이 없습니다", "Archive item unavailable")}</strong><Link href="/showcase">{t("아카이브로 돌아가기", "Back to archive")}</Link></div>;
 
@@ -110,6 +127,7 @@ export function ShowcaseDetail({ itemId }: { itemId: string }) {
           <div className={styles.detailActions}>
             <button type="button" data-active={item.liked_by_me} onClick={() => void toggle("like")}><Heart size={17} fill={item.liked_by_me ? "currentColor" : "none"} />{item.like_count}</button>
             <button type="button" data-active={item.bookmarked_by_me} onClick={() => void toggle("bookmark")}><Bookmark size={17} fill={item.bookmarked_by_me ? "currentColor" : "none"} />{item.bookmark_count}</button>
+            <button type="button" onClick={() => void shareItem()}><Share2 size={16} />{t("공유", "Share")}</button>
             <button type="button" onClick={() => { if (!signedIn) setMessage(t("신고는 로그인 후 사용할 수 있습니다", "Sign in to report")); else setReportOpen(true); }}><Flag size={16} />{t("신고", "Report")}</button>
           </div>
           {message ? <p className={styles.pageMessage}>{message}</p> : null}

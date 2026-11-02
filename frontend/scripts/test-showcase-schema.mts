@@ -5,6 +5,10 @@ const migration = await readFile(
   new URL("../../supabase/migrations/0070_keyboard_showcase.sql", import.meta.url),
   "utf8",
 );
+const discoveryMigration = await readFile(
+  new URL("../../supabase/migrations/0071_showcase_discovery.sql", import.meta.url),
+  "utf8",
+);
 
 assert.match(migration, /pg_advisory_xact_lock/, "quota creation must be serialized");
 assert.match(migration, />= 10/, "account limit must be enforced by Postgres");
@@ -21,5 +25,9 @@ assert.doesNotMatch(
   /grant\s+(?:insert|update|delete)[\s\S]{0,100}keyboard_showcase_items/i,
   "item writes must stay behind RPC functions",
 );
+assert.match(discoveryMigration, /p_query text default null/, "archive discovery needs a search query");
+assert.match(discoveryMigration, /p_sort text default 'newest'/, "archive discovery needs sorting");
+assert.match(discoveryMigration, /p_bookmarked_only boolean default false/, "users need a bookmarked archive view");
+assert.match(discoveryMigration, /mine\.profile_id = public\.current_profile_id\(\)/, "bookmark filtering must use the authenticated profile");
 
 console.log("Showcase quota, publication, storage and write-boundary guards passed.");
