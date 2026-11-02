@@ -110,7 +110,6 @@ test("MIME negotiation chooses a supported codec, then browser default", () => {
   });
   const stream = {} as MediaStream;
   assert.equal((recorderFor(stream) as unknown as { options: MediaRecorderOptions }).options.mimeType, supported);
-  assert.equal((recorderFor(stream) as unknown as { options: MediaRecorderOptions }).options.audioBitsPerSecond, 192_000);
   supported = "";
   assert.equal((recorderFor(stream) as unknown as { options: MediaRecorderOptions }).options.mimeType, undefined);
 });

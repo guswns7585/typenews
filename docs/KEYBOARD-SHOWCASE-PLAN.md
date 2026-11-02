@@ -1,6 +1,4 @@
-# Keyboard Archive
-
-Public product name: `아카이브`. The existing `/showcase` route and database identifiers remain internal names to avoid a needless migration.
+# Keyboard Showcase
 
 Development branch: `feature/keyboard-showcase`.
 
@@ -28,15 +26,3 @@ Development branch: `feature/keyboard-showcase`.
 ## Delivery
 
 Implement this feature independently from `feature/longform-recording`. The initial branch was created at the existing HEAD; it does not contain the current checkout's uncommitted changes. Before development, bring in the reviewed security baseline without copying unfinished typing changes.
-
-## Implementation status
-
-- [x] Branch rebased to the deployed long-form/recording baseline.
-- [x] Postgres schema, account quota, private Storage bucket, RLS and RPC write boundary.
-- [x] Public gallery, detail view, first-time upload flow and optional typing-sound upload.
-- [x] Likes, bookmarks, reports and moderator hide RPC.
-- [x] Owner dashboard for editing, unpublishing and deleting existing keyboards.
-- [x] Admin report queue with dismiss, hide and restore actions.
-- [x] KeyXIF web-backup JSON parser with preset selection and safe field mapping.
-- [x] Local PNG collage exporter for up to 10 selected keyboards.
-- [x] Author-specific archive view linked from author names.

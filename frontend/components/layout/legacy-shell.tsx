@@ -57,9 +57,8 @@ export function LegacyShell({ children, showTypingChrome = true, wide = false }:
   const { locale, t } = useUiLanguage();
   const isTyping = pathname === "/";
   const isEvent = pathname === "/event";
-  const isShowcase = pathname.startsWith("/showcase");
   const isAdmin = pathname.startsWith("/admin");
-  const selectedNavTab = isTyping ? "typing" : isEvent ? "event" : isShowcase ? "showcase" : null;
+  const selectedNavTab = isTyping ? "typing" : isEvent ? "event" : null;
   const reduceNavMotion = useReducedMotion();
   const isSpreadsheet = !isAdmin && visualTheme === "spreadsheet";
   const isVscode = !isAdmin && visualTheme === "vscode";
@@ -128,7 +127,7 @@ export function LegacyShell({ children, showTypingChrome = true, wide = false }:
       {isVscode ? <VscodeChrome showSettings={isTyping} /> : null}
       {isTerminal ? <TerminalChrome showSettings={isTyping} /> : null}
       {isAgentTheme ? <AgentChrome theme={visualTheme as AgentTheme} showSettings={isTyping} /> : null}
-      <header className="global-nav" data-section={isShowcase ? "showcase" : undefined}>
+      <header className="global-nav">
         <div className="global-nav-left">
           <Link href="/" className="global-nav-brand" aria-label={t("Type News 홈", "Type News home")}>
             <CurrentLogoMark />
@@ -167,23 +166,6 @@ export function LegacyShell({ children, showTypingChrome = true, wide = false }:
                 />
               ) : null}
               <span className="global-nav-tab-label">{t("이벤트", "Event")}</span>
-            </MotionLink>
-            <MotionLink
-              href="/showcase"
-              aria-current={isShowcase ? "page" : undefined}
-              whileTap={reduceNavMotion ? undefined : { scale: 0.96 }}
-              whileFocus={reduceNavMotion ? undefined : { scale: 1.025 }}
-            >
-              {selectedNavTab === "showcase" ? (
-                <motion.span
-                  className="global-nav-tab-indicator"
-                  layoutId="primary-nav-tab-selection"
-                  transition={reduceNavMotion
-                    ? { duration: 0.01 }
-                    : { type: "spring", stiffness: 470, damping: 38, mass: 0.72 }}
-                />
-              ) : null}
-              <span className="global-nav-tab-label">{t("아카이브", "Archive")}</span>
             </MotionLink>
           </nav>
         </div>
