@@ -128,7 +128,10 @@ export function ShowcaseEditor({ item, onClose, onSaved }: Props) {
       // A failed edit may already have overwritten a fixed media path. Removing it
       // would remove the previously published object too, so only clean new rows.
       if (created && uploadedPaths.length) await supabase.storage.from(SHOWCASE_BUCKET).remove(uploadedPaths);
-      setMessage(messageOf(error, t("키보드를 저장하지 못했습니다", "Could not save the keyboard")));
+      const detail = messageOf(error, t("키보드를 저장하지 못했습니다", "Could not save the keyboard"));
+      setMessage(/row-level security|violates.*policy/i.test(detail)
+        ? t("미디어 업로드 권한 정책이 최신 상태가 아닙니다. 관리자에게 알려 주세요.", "The media upload policy needs to be updated. Please contact the administrator.")
+        : detail);
     } finally { setBusy(false); }
   }
 
