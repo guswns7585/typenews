@@ -12,6 +12,7 @@
     "test:mesh-performance": "tsx scripts/test-mesh-performance.mts",
     "test:hangul-day-logo": "tsx scripts/test-hangul-day-logo.mts",
     "test:longform": "tsx features/longform/longform.test.mts",
+    "test:integrity": "tsx --test features/integrity/assisted-input.test.mts",
     "test:recording": "tsx --test features/recording/recording.test.mts features/recording/editor.test.mts features/recording/audio.test.mts features/recording/waveform.test.mts",
     "test:winner-shipping": "tsx scripts/test-winner-shipping.mts",
     "test:news": "tsx scripts/test-news-feed-fixtures.mts",
