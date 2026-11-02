@@ -19,6 +19,7 @@ import { imageForSentence } from "@/features/content/sentence-images";
 import { loadWordPool, pickSentence, prefetchBundles } from "@/features/content/sentence-picker";
 import { DIAL_SIDE, createWordQueue, dialSlots, refillIfNeeded } from "@/features/content/word-stream";
 import { behaviorTracker } from "@/features/integrity/behavior-tracker";
+import { shouldBlockAssistedInput } from "@/features/integrity/assisted-input";
 import { flushSession, registerIntegrityHandlers } from "@/features/integrity/session-reporter";
 import {
   flushTypingAnalytics,
@@ -1957,9 +1958,13 @@ export function TypingWorkspace() {
               <textarea
             ref={inputRef}
             id="input"
+            {...({ writingsuggestions: "false", textprediction: "false" } as Record<string, string>)}
             aria-label={t("타이핑 문장 입력", "Typing input")}
             value={input}
             disabled={isInputDisabled}
+            autoComplete="off"
+            autoCorrect="off"
+            autoCapitalize="off"
             onChange={(event) => {
               if (discardImeCommitRef.current) {
                 event.currentTarget.value = "";
@@ -1971,6 +1976,12 @@ export function TypingWorkspace() {
             /* 클립보드를 막아도 선택한 글자를 끌어다 놓으면 그대로 들어온다.
                붙여넣기와 똑같은 우회로라 같이 막고 같은 신호로 센다. */
             onDrop={(event) => {
+              event.preventDefault();
+              if (!isScripture) behaviorTracker.notePasteAttempt();
+            }}
+            onBeforeInput={(event) => {
+              const nativeEvent = event.nativeEvent as InputEvent;
+              if (!shouldBlockAssistedInput(nativeEvent)) return;
               event.preventDefault();
               if (!isScripture) behaviorTracker.notePasteAttempt();
             }}
