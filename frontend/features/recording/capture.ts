@@ -1,4 +1,5 @@
 import { FPS, MAX_BYTES, MAX_SECONDS, recorderFor, stopTracks, waitForMedia } from "./media";
+import { enhanceTypingAudio } from "./audio";
 
 let activeHandle: string | undefined;
 const RECORDING_LAYOUT_EVENT = "typenews:recording-layout-lock";
@@ -118,6 +119,7 @@ export async function startCapture(options: {
   let display: MediaStream | undefined;
   let mic: MediaStream | undefined;
   let output: MediaStream | undefined;
+  let enhancedMic: Awaited<ReturnType<typeof enhanceTypingAudio>> | undefined;
   let recorder: MediaRecorder | undefined;
   let frame: ReturnType<typeof setInterval> | undefined;
   let deadline: ReturnType<typeof setTimeout> | undefined;
@@ -143,6 +145,7 @@ export async function startCapture(options: {
     document.removeEventListener("visibilitychange", visibility);
     removeListeners.splice(0).forEach((remove) => remove());
     stopTracks(output); stopTracks(mic);
+    enhancedMic?.close(); enhancedMic = undefined;
     if (!retainSharing) {
       if (options.sharing) options.sharing.close(handle);
       stopTracks(display);
@@ -201,6 +204,7 @@ export async function startCapture(options: {
       if (ended) throw new Error("마이크 권한 확인 중 탭 공유가 종료되었습니다.");
       if (!mic.getAudioTracks().length || mic.getAudioTracks().some((audio) => audio.readyState !== "live")) throw new Error("마이크 연결이 종료되었습니다.");
       mic.getAudioTracks().forEach((audio) => audio.addEventListener("ended", () => stop("마이크 연결이 종료되었습니다."), { once: true }));
+      enhancedMic = await enhanceTypingAudio(mic);
     }
     video.srcObject = display;
     const loaded = waitForMedia(video, "loadeddata", preparing.signal);
@@ -255,7 +259,7 @@ export async function startCapture(options: {
     };
     draw();
     output = canvas.captureStream(FPS);
-    mic?.getAudioTracks().forEach((audio) => output!.addTrack(audio));
+    enhancedMic?.stream.getAudioTracks().forEach((audio) => output!.addTrack(audio));
     recorder = recorderFor(output);
     const chunks: Blob[] = [];
     let bytes = 0;

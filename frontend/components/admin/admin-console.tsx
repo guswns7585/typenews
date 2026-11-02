@@ -1,10 +1,11 @@
 "use client";
 
-import { ChartNoAxesCombined, FileText, Gift, Image, Inbox, Lock, Trophy, Users } from "lucide-react";
+import { ChartNoAxesCombined, FileText, Flag, Gift, Image, Inbox, Lock, Trophy, Users } from "lucide-react";
 import { useState } from "react";
 import { AnalyticsTab } from "@/components/admin/analytics-tab";
 import { ProfilePhotosTab } from "@/components/admin/profile-photos-tab";
 import { PrizesTab } from "@/components/admin/prizes-tab";
+import { ShowcaseReportsTab } from "@/components/admin/showcase-reports-tab";
 import { SentenceRequestsTab } from "@/components/admin/sentence-requests-tab";
 import { SentencesTab } from "@/components/admin/sentences-tab";
 import { UsersTab } from "@/components/admin/users-tab";
@@ -15,6 +16,7 @@ const TABS = [
   { id: "sentences", label: "문장 관리", icon: FileText },
   { id: "users", label: "사용자", icon: Users },
   { id: "photos", label: "프로필 사진", icon: Image },
+  { id: "showcase-reports", label: "아카이브 신고", icon: Flag },
   { id: "analytics", label: "이용 분석", icon: ChartNoAxesCombined },
   { id: "prizes", label: "경품", icon: Gift },
   { id: "winners", label: "당첨 관리", icon: Trophy },
@@ -60,6 +62,7 @@ export function AdminConsole({ onLock }: { onLock: () => void }) {
       {tab === "sentences" ? <SentencesTab /> : null}
       {tab === "users" ? <UsersTab /> : null}
       {tab === "photos" ? <ProfilePhotosTab /> : null}
+      {tab === "showcase-reports" ? <ShowcaseReportsTab /> : null}
       {tab === "analytics" ? <AnalyticsTab /> : null}
       {tab === "prizes" ? <PrizesTab /> : null}
       {tab === "winners" ? <WinnersTab /> : null}
