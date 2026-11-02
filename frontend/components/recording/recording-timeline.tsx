@@ -10,12 +10,13 @@ type TimelineProps = {
   duration: number;
   range: TrimRange;
   time: number;
+  waveform?: readonly number[];
   disabled: boolean;
   onSeek: (time: number) => void;
   onBoundary: (edge: "start" | "end", value: number) => void;
 };
 
-export function RecordingTimeline({ duration, range, time, disabled, onSeek, onBoundary }: TimelineProps) {
+export function RecordingTimeline({ duration, range, time, waveform = [], disabled, onSeek, onBoundary }: TimelineProps) {
   const { t } = useUiLanguage();
   const track = useRef<HTMLDivElement>(null);
   const dragging = useRef<"start" | "end" | null>(null);
@@ -24,12 +25,22 @@ export function RecordingTimeline({ duration, range, time, disabled, onSeek, onB
     const box = track.current?.getBoundingClientRect();
     if (box) onBoundary(edge, pointerTime(clientX, box.left, box.width, duration));
   };
+  const waveformPath = waveform.map((level, index) => {
+    const height = Math.max(1.5, Math.min(1, level) * 46);
+    return `M${index + 0.5} ${50 - height}V${50 + height}`;
+  }).join(" ");
+  const selectedWaveformClip = `inset(0 ${Math.max(0, 100 - percent(range.end))}% 0 ${Math.max(0, percent(range.start))}%)`;
   return <div className={styles.timelineSection}>
     <div className={styles.timeline} ref={track}>
+      {waveformPath && <svg className={styles.waveform} viewBox={`0 0 ${waveform.length} 100`}
+        preserveAspectRatio="none" aria-hidden="true"><path d={waveformPath} /></svg>}
       <input className={styles.seek} type="range" min={0} max={duration} step={0.01}
         value={Math.min(time, duration)} disabled={disabled} aria-label={t("재생 위치", "Playhead")}
         aria-valuetext={formatTime(time)} onChange={(event) => onSeek(event.target.valueAsNumber)} />
       <div className={styles.selectedRange} style={{ left: `${percent(range.start)}%`, width: `${percent(range.end - range.start)}%` }} aria-hidden="true" />
+      {waveformPath && <svg className={`${styles.waveform} ${styles.waveformSelected}`}
+        viewBox={`0 0 ${waveform.length} 100`} preserveAspectRatio="none" aria-hidden="true"
+        style={{ clipPath: selectedWaveformClip }}><path d={waveformPath} /></svg>}
       <div className={styles.playhead} style={{ left: `${percent(time)}%` }} aria-hidden="true" />
       {(["start", "end"] as const).map((edge) => <button key={edge} type="button" role="slider"
         className={styles.handle} style={{ left: `${percent(range[edge])}%` }} disabled={disabled}

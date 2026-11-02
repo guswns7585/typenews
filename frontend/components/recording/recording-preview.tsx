@@ -157,7 +157,8 @@ export function RecordingPreview({ recording, initialRange, onClose, onExport }:
           </select>
         </div>
       </div>
-      <RecordingTimeline duration={duration} range={range} time={time} disabled={busy || !ready} onSeek={seek} onBoundary={boundary} />
+      <RecordingTimeline duration={duration} range={range} time={time} waveform={recording.waveform}
+        disabled={busy || !ready} onSeek={seek} onBoundary={boundary} />
       <div className={editor.shortcuts} aria-label={t("편집 단축키", "Editing shortcuts")}>
         <span><kbd>Space</kbd> {t("재생", "Play")}</span><span><kbd>I</kbd> {t("시작점", "Start")}</span><span><kbd>O</kbd> {t("끝점", "End")}</span>
         <span><kbd>← →</kbd> {t("0.1초 이동", "Seek 0.1s")}</span><span><kbd>Shift</kbd>+<kbd>← →</kbd> {t("1초 이동", "Seek 1s")}</span><span><kbd>Ctrl/⌘ S</kbd> {t("내보내기", "Export")}</span>
