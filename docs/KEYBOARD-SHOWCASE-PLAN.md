@@ -45,3 +45,5 @@ Implement this feature independently from `feature/longform-recording`. The init
 - [x] Native share sheet with clipboard fallback on archive detail pages.
 - [x] Customizable collage order, theme, image fit, captions and optional author name.
 - [x] Local media previews and explicit removal of an existing typing-sound file.
+- [x] Author-first personal archive space with introduction, collection stats and featured keyboard.
+- [x] Owner-selectable mood, accent color, banner pattern and gallery/shelf layout.

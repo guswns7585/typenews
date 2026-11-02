@@ -9,6 +9,10 @@ const discoveryMigration = await readFile(
   new URL("../../supabase/migrations/0071_showcase_discovery.sql", import.meta.url),
   "utf8",
 );
+const spacesMigration = await readFile(
+  new URL("../../supabase/migrations/0072_showcase_spaces.sql", import.meta.url),
+  "utf8",
+);
 
 assert.match(migration, /pg_advisory_xact_lock/, "quota creation must be serialized");
 assert.match(migration, />= 10/, "account limit must be enforced by Postgres");
@@ -29,5 +33,9 @@ assert.match(discoveryMigration, /p_query text default null/, "archive discovery
 assert.match(discoveryMigration, /p_sort text default 'newest'/, "archive discovery needs sorting");
 assert.match(discoveryMigration, /p_bookmarked_only boolean default false/, "users need a bookmarked archive view");
 assert.match(discoveryMigration, /mine\.profile_id = public\.current_profile_id\(\)/, "bookmark filtering must use the authenticated profile");
+assert.match(spacesMigration, /create table if not exists public\.keyboard_showcase_spaces/, "personal archive spaces need persisted appearance settings");
+assert.match(spacesMigration, /p\.id = public\.current_profile_id\(\)/, "space ownership must be derived server-side");
+assert.match(spacesMigration, /featured_item_id is not null and not exists/, "featured keyboards must belong to the owner");
+assert.match(spacesMigration, /revoke all on table public\.keyboard_showcase_spaces/, "space settings must stay behind RPC functions");
 
 console.log("Showcase quota, publication, storage and write-boundary guards passed.");

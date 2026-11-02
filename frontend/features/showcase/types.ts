@@ -75,3 +75,21 @@ export type MyShowcaseItem = {
 export type MyShowcaseViewItem = MyShowcaseItem & {
   thumbnailUrl: string | null;
 };
+
+export type ShowcaseSpace = {
+  profile_id: string;
+  display_name: string;
+  profile_thumbnail_path: string | null;
+  profile_photo_updated_at: string | null;
+  intro: string;
+  theme: "paper" | "studio" | "night" | "berry";
+  accent: "rose" | "blue" | "green" | "amber";
+  banner: "soft" | "grid" | "waves" | "dots";
+  layout: "gallery" | "shelf";
+  featured_item_id: string | null;
+  keyboard_count: number;
+  total_likes: number;
+  is_owner: boolean;
+};
+
+export type ShowcaseSpaceView = ShowcaseSpace & { profilePhotoUrl: string | null };

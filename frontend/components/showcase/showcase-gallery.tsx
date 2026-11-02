@@ -1,13 +1,14 @@
 "use client";
 
-import { Bookmark, FolderCog, Heart, ImagePlus, LoaderCircle, Music2, RefreshCw, Search } from "lucide-react";
+import { Bookmark, FolderCog, Heart, ImagePlus, LoaderCircle, Music2, Palette, RefreshCw, Search, Sparkles } from "lucide-react";
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, type CSSProperties } from "react";
 import { ShowcaseEditor } from "@/components/showcase/showcase-editor";
 import { ShowcaseManager } from "@/components/showcase/showcase-manager";
+import { ShowcaseSpaceEditor } from "@/components/showcase/showcase-space-editor";
 import { useAuthProfile } from "@/components/auth/auth-button";
 import { signedShowcaseUrl } from "@/features/showcase/media";
-import type { MyShowcaseItem, ShowcaseItem, ShowcaseViewItem } from "@/features/showcase/types";
+import type { MyShowcaseItem, ShowcaseItem, ShowcaseSpace, ShowcaseSpaceView, ShowcaseViewItem } from "@/features/showcase/types";
 import { publicProfilePhotoUrl } from "@/features/profile/profile-photo";
 import { getSupabaseClient } from "@/lib/supabase/client";
 import { messageOf } from "@/lib/supabase/errors";
@@ -45,15 +46,35 @@ export function ShowcaseGallery({ profileId = null }: { profileId?: string | nul
   const [loadingMore, setLoadingMore] = useState(false);
   const [editorOpen, setEditorOpen] = useState(false);
   const [managerOpen, setManagerOpen] = useState(false);
+  const [spaceEditorOpen, setSpaceEditorOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<MyShowcaseItem | null>(null);
   const [message, setMessage] = useState("");
   const [total, setTotal] = useState(0);
   const [profileName, setProfileName] = useState("");
+  const [space, setSpace] = useState<ShowcaseSpaceView | null>(null);
   const [queryDraft, setQueryDraft] = useState("");
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState<"newest" | "likes" | "bookmarks">("newest");
   const [bookmarkedOnly, setBookmarkedOnly] = useState(false);
   const activeBookmarkFilter = signedIn && bookmarkedOnly;
+
+  const loadSpace = useCallback(async () => {
+    if (!profileId) { setSpace(null); return; }
+    const supabase = getSupabaseClient();
+    if (!supabase) return;
+    const { data, error } = await supabase.rpc("get_showcase_space", { p_profile_id: profileId });
+    if (error) return;
+    const row = ((data ?? []) as ShowcaseSpace[])[0];
+    if (!row) return;
+    setSpace({
+      ...row,
+      keyboard_count: Number(row.keyboard_count), total_likes: Number(row.total_likes),
+      profilePhotoUrl: publicProfilePhotoUrl(supabase, row.profile_thumbnail_path, row.profile_photo_updated_at),
+    });
+    setProfileName(row.display_name);
+  }, [profileId]);
+
+  useEffect(() => { void Promise.resolve().then(loadSpace); }, [loadSpace, signedIn]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => setQuery(queryDraft.trim()), 300);
@@ -79,6 +100,16 @@ export function ShowcaseGallery({ profileId = null }: { profileId?: string | nul
       const rows = (data ?? []) as ShowcaseItem[];
       if (profileId && rows[0]?.display_name) setProfileName(rows[0].display_name);
       const resolved = await Promise.all(rows.map(resolveItem));
+      if (profileId && resolved[0]) setSpace((current) => current ?? {
+        profile_id: profileId,
+        display_name: resolved[0].display_name,
+        profile_thumbnail_path: resolved[0].profile_thumbnail_path,
+        profile_photo_updated_at: resolved[0].profile_photo_updated_at,
+        profilePhotoUrl: resolved[0].profilePhotoUrl,
+        intro: "", theme: "paper", accent: "rose", banner: "soft", layout: "gallery",
+        featured_item_id: null, keyboard_count: Number(rows[0]?.total_count ?? rows.length),
+        total_likes: rows.reduce((sum, row) => sum + row.like_count, 0), is_owner: false,
+      });
       setItems((current) => offset ? [...current, ...resolved] : resolved);
       setTotal(Number(rows[0]?.total_count ?? offset + rows.length));
     } catch (error) {
@@ -126,9 +157,26 @@ export function ShowcaseGallery({ profileId = null }: { profileId?: string | nul
     if (kind === "bookmark" && activeBookmarkFilter && !result.active) setTotal((current) => Math.max(0, current - 1));
   }
 
+  const featuredItem = space?.featured_item_id ? items.find((item) => item.item_id === space.featured_item_id) : null;
+  const spaceStyle = space ? ({ "--archive-accent": ({ rose: "#b85270", blue: "#4777ba", green: "#4f8168", amber: "#b4772f" })[space.accent] } as CSSProperties) : undefined;
+  const canManage = signedIn && (!profileId || Boolean(space?.is_owner));
+
   return (
     <section className={styles.page}>
-      <header className={styles.hero}>
+      {profileId && space ? <header className={styles.personalHero} data-theme={space.theme} data-banner={space.banner} style={spaceStyle}>
+        <div className={styles.personalIdentity}>
+          <span className={styles.personalAvatar} data-empty={!space.profilePhotoUrl}>{space.profilePhotoUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={space.profilePhotoUrl} alt="" />
+          ) : space.display_name.slice(0, 1)}</span>
+          <div><span className={styles.eyebrow}>PERSONAL ARCHIVE</span><h1>{space.display_name}</h1><p>{space.intro || t("아직 공간 소개가 없습니다.", "This space has no introduction yet.")}</p></div>
+        </div>
+        <div className={styles.spaceStats}><span><strong>{space.keyboard_count}</strong>{t("키보드", "keyboards")}</span><span><strong>{space.total_likes}</strong>{t("받은 좋아요", "likes received")}</span></div>
+        {featuredItem ? <Link className={styles.featuredKeyboard} href={`/showcase/${featuredItem.item_id}`}><span><Sparkles size={14} />{t("대표 키보드", "Featured")}</span>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={featuredItem.thumbnailUrl} alt="" /><strong>{featuredItem.title}</strong></Link> : null}
+        <div className={styles.personalActions}><Link className={styles.backLink} href="/showcase">← {t("전체 아카이브", "All archives")}</Link>{space.is_owner ? <><button type="button" className={styles.secondaryButton} onClick={() => setSpaceEditorOpen(true)}><Palette size={16} />{t("공간 꾸미기", "Customize")}</button><button type="button" className={styles.secondaryButton} onClick={() => setManagerOpen(true)}><FolderCog size={16} />{t("키보드 관리", "Manage keyboards")}</button><button type="button" className={styles.primaryButton} onClick={() => { setEditingItem(null); setEditorOpen(true); }}><ImagePlus size={16} />{t("키보드 추가", "Add keyboard")}</button></> : null}</div>
+      </header> : <header className={styles.hero}>
         <div>
           <span className={styles.eyebrow}>TYPENEWS ARCHIVE</span>
           <h1>{profileId ? (profileName ? t(`${profileName}의 아카이브`, `${profileName}'s archive`) : t("사용자 아카이브", "User archive")) : t("아카이브", "Archive")}</h1>
@@ -136,14 +184,14 @@ export function ShowcaseGallery({ profileId = null }: { profileId?: string | nul
           {profileId ? <Link className={styles.backLink} href="/showcase">← {t("전체 아카이브", "All archives")}</Link> : null}
         </div>
         <div className={styles.heroActions}>
-          {signedIn ? <button type="button" className={styles.secondaryButton} onClick={() => setManagerOpen(true)}><FolderCog size={17} />{t("내 아카이브 관리", "Manage my archive")}</button> : null}
-          <button type="button" className={styles.primaryButton} disabled={!authReady} onClick={() => {
+          {canManage ? <button type="button" className={styles.secondaryButton} onClick={() => setManagerOpen(true)}><FolderCog size={17} />{t("내 아카이브 관리", "Manage my archive")}</button> : null}
+          {!profileId || space?.is_owner ? <button type="button" className={styles.primaryButton} disabled={!authReady} onClick={() => {
             if (!authReady) return;
             if (!signedIn) { setMessage(t("키보드 등록은 로그인 후 사용할 수 있습니다", "Sign in to add a keyboard")); return; }
             setEditingItem(null); setEditorOpen(true);
-          }}><ImagePlus size={17} />{t("키보드 등록", "Add keyboard")}</button>
+          }}><ImagePlus size={17} />{t("키보드 등록", "Add keyboard")}</button> : null}
         </div>
-      </header>
+      </header>}
 
       <div className={styles.toolbar}>
         <strong>{t(`키보드 ${total.toLocaleString()}대`, `${total.toLocaleString()} keyboards`)}</strong>
@@ -162,7 +210,7 @@ export function ShowcaseGallery({ profileId = null }: { profileId?: string | nul
       {loading ? (
         <div className={styles.loading}><LoaderCircle className={styles.spinning} />{t("아카이브를 여는 중입니다", "Opening the archive")}</div>
       ) : items.length ? (
-        <div className={styles.grid}>
+        <div className={styles.grid} data-layout={profileId ? space?.layout : undefined}>
           {items.map((item) => (
             <article className={styles.card} key={item.item_id}>
               <Link className={styles.cardImage} href={`/showcase/${item.item_id}`}>
@@ -220,6 +268,7 @@ export function ShowcaseGallery({ profileId = null }: { profileId?: string | nul
 
       {managerOpen ? <ShowcaseManager onClose={() => setManagerOpen(false)} onAdd={() => { setManagerOpen(false); setEditingItem(null); setEditorOpen(true); }} onEdit={(item) => { setManagerOpen(false); setEditingItem(item); setEditorOpen(true); }} onChanged={() => void load(0)} /> : null}
       {editorOpen ? <ShowcaseEditor item={editingItem} onClose={() => { setEditorOpen(false); setEditingItem(null); }} onSaved={() => void load(0)} /> : null}
+      {spaceEditorOpen && space ? <ShowcaseSpaceEditor space={space} items={items} onClose={() => setSpaceEditorOpen(false)} onSaved={() => void loadSpace()} /> : null}
     </section>
   );
 }
