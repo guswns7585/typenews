@@ -1,5 +1,6 @@
 import { FPS, MAX_BYTES, MAX_SECONDS, recorderFor, stopTracks, waitForMedia } from "./media";
 import { enhanceTypingAudio } from "./audio";
+import { buildWaveform } from "./waveform";
 
 let activeHandle: string | undefined;
 const RECORDING_LAYOUT_EVENT = "typenews:recording-layout-lock";
@@ -14,7 +15,7 @@ type CaptureDevices = MediaDevices & {
   setCaptureHandleConfig?: (config: { handle?: string; permittedOrigins?: string[] }) => void;
 };
 type CaptureTrack = MediaStreamTrack & { getCaptureHandle?: () => { handle?: string } | null };
-export type RecordingResult = { blob: Blob; duration: number; notice?: string };
+export type RecordingResult = { blob: Blob; duration: number; notice?: string; waveform?: number[] };
 
 /** Sharing UI and closing the setup dialog can briefly change the layout. */
 async function stableTarget(target: () => HTMLElement | null, signal: AbortSignal) {
@@ -126,6 +127,7 @@ export async function startCapture(options: {
   let started = 0;
   let ended = 0;
   let notice: string | undefined;
+  const waveformSamples: number[] = [];
   let failed = false;
   let layoutLocked = true;
   lockRecordingLayout(true);
@@ -281,13 +283,20 @@ export async function startCapture(options: {
       if (chunks.length) options.onComplete({
         blob: new Blob(chunks, { type: recorder!.mimeType }),
         duration: Math.min(MAX_SECONDS, ((ended || performance.now()) - started) / 1000), notice,
+        waveform: buildWaveform(waveformSamples),
       });
       else if (!signal.aborted) options.onError(new Error(notice || "영상 프레임이 저장되지 않았습니다. 탭을 화면에 표시한 상태에서 다시 녹화해 주세요."));
     };
     recorder.start(250);
     started = performance.now();
     draw();
-    frame = setInterval(() => { try { draw(); } catch (error) { stop(error instanceof Error ? error.message : "캡처 오류"); } }, 1000 / FPS);
+    if (enhancedMic) waveformSamples.push(enhancedMic.sampleLevel());
+    frame = setInterval(() => {
+      try {
+        draw();
+        if (enhancedMic) waveformSamples.push(enhancedMic.sampleLevel());
+      } catch (error) { stop(error instanceof Error ? error.message : "캡처 오류"); }
+    }, 1000 / FPS);
     deadline = setTimeout(() => stop("5분 제한에 도달했습니다."), MAX_SECONDS * 1000);
     document.addEventListener("visibilitychange", visibility);
     return { stop: () => stop(undefined, true) };

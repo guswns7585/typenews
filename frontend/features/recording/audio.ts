@@ -7,12 +7,13 @@ export const TYPING_AUDIO_PROFILE = {
 } as const;
 
 export async function enhanceTypingAudio(input: MediaStream) {
-  if (typeof AudioContext === "undefined") return { stream: input, close() {} };
+  if (typeof AudioContext === "undefined") return { stream: input, sampleLevel: () => 0, close() {} };
   const context = new AudioContext({ latencyHint: "interactive" });
   const source = context.createMediaStreamSource(input);
   const rumbleCut = context.createBiquadFilter();
   const presence = context.createBiquadFilter();
   const hissCut = context.createBiquadFilter();
+  const analyser = context.createAnalyser();
   const destination = context.createMediaStreamDestination();
   rumbleCut.type = "highpass";
   rumbleCut.frequency.value = TYPING_AUDIO_PROFILE.rumbleCutHz;
@@ -24,16 +25,32 @@ export async function enhanceTypingAudio(input: MediaStream) {
   hissCut.type = "lowpass";
   hissCut.frequency.value = TYPING_AUDIO_PROFILE.hissCutHz;
   hissCut.Q.value = 0.55;
-  source.connect(rumbleCut).connect(presence).connect(hissCut).connect(destination);
+  analyser.fftSize = 256;
+  analyser.smoothingTimeConstant = 0.15;
+  const levelBuffer = new Float32Array(analyser.fftSize);
+  source.connect(rumbleCut).connect(presence).connect(hissCut).connect(analyser).connect(destination);
   await context.resume();
 
   return {
     stream: destination.stream,
+    sampleLevel() {
+      analyser.getFloatTimeDomainData(levelBuffer);
+      let squareSum = 0;
+      let peak = 0;
+      for (const sample of levelBuffer) {
+        const absolute = Math.abs(sample);
+        squareSum += sample * sample;
+        peak = Math.max(peak, absolute);
+      }
+      const rms = Math.sqrt(squareSum / levelBuffer.length);
+      return Math.min(1, rms * 0.7 + peak * 0.3);
+    },
     close() {
       source.disconnect();
       rumbleCut.disconnect();
       presence.disconnect();
       hissCut.disconnect();
+      analyser.disconnect();
       destination.disconnect();
       void context.close();
     },
