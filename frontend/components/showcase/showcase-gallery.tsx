@@ -190,11 +190,11 @@ export function ShowcaseGallery({ profileId = null }: { profileId?: string | nul
                   <span className={styles.noAudio}><Music2 size={13} />{t("타건음 없음", "No typing sound")}</span>
                 )}
                 <div className={styles.reactions}>
-                  <button type="button" data-active={item.liked_by_me} onClick={() => void toggle(item.item_id, "like")}>
+                  <button type="button" disabled={!authReady} data-active={item.liked_by_me} onClick={() => void toggle(item.item_id, "like")}>
                     <Heart size={16} fill={item.liked_by_me ? "currentColor" : "none"} />
                     {item.like_count}
                   </button>
-                  <button type="button" data-active={item.bookmarked_by_me} onClick={() => void toggle(item.item_id, "bookmark")}>
+                  <button type="button" disabled={!authReady} data-active={item.bookmarked_by_me} onClick={() => void toggle(item.item_id, "bookmark")}>
                     <Bookmark size={16} fill={item.bookmarked_by_me ? "currentColor" : "none"} />
                     {item.bookmark_count}
                   </button>

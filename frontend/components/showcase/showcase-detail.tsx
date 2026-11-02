@@ -14,7 +14,7 @@ import styles from "./showcase.module.css";
 
 export function ShowcaseDetail({ itemId }: { itemId: string }) {
   const { isEnglish, t } = useUiLanguage();
-  const { signedIn } = useAuthProfile();
+  const { signedIn, authReady } = useAuthProfile();
   const [item, setItem] = useState<ShowcaseViewItem | null>(null);
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(true);
@@ -125,10 +125,10 @@ export function ShowcaseDetail({ itemId }: { itemId: string }) {
           </dl>
           {item.keyxif_url ? <a className={styles.keyxifLink} href={item.keyxif_url} target="_blank" rel="noreferrer">KeyXIF <ExternalLink size={14} /></a> : null}
           <div className={styles.detailActions}>
-            <button type="button" data-active={item.liked_by_me} onClick={() => void toggle("like")}><Heart size={17} fill={item.liked_by_me ? "currentColor" : "none"} />{item.like_count}</button>
-            <button type="button" data-active={item.bookmarked_by_me} onClick={() => void toggle("bookmark")}><Bookmark size={17} fill={item.bookmarked_by_me ? "currentColor" : "none"} />{item.bookmark_count}</button>
+            <button type="button" disabled={!authReady} data-active={item.liked_by_me} onClick={() => void toggle("like")}><Heart size={17} fill={item.liked_by_me ? "currentColor" : "none"} />{item.like_count}</button>
+            <button type="button" disabled={!authReady} data-active={item.bookmarked_by_me} onClick={() => void toggle("bookmark")}><Bookmark size={17} fill={item.bookmarked_by_me ? "currentColor" : "none"} />{item.bookmark_count}</button>
             <button type="button" onClick={() => void shareItem()}><Share2 size={16} />{t("공유", "Share")}</button>
-            <button type="button" onClick={() => { if (!signedIn) setMessage(t("신고는 로그인 후 사용할 수 있습니다", "Sign in to report")); else setReportOpen(true); }}><Flag size={16} />{t("신고", "Report")}</button>
+            <button type="button" disabled={!authReady} onClick={() => { if (!signedIn) setMessage(t("신고는 로그인 후 사용할 수 있습니다", "Sign in to report")); else setReportOpen(true); }}><Flag size={16} />{t("신고", "Report")}</button>
           </div>
           {message ? <p className={styles.pageMessage}>{message}</p> : null}
         </div>
