@@ -6,6 +6,7 @@ import { useCallback, useEffect, useState, type CSSProperties } from "react";
 import { ShowcaseEditor } from "@/components/showcase/showcase-editor";
 import { ShowcaseManager } from "@/components/showcase/showcase-manager";
 import { ShowcaseSpaceEditor } from "@/components/showcase/showcase-space-editor";
+import { ShowcaseSpaceDirectory } from "@/components/showcase/showcase-space-directory";
 import { useAuthProfile } from "@/components/auth/auth-button";
 import { signedShowcaseUrl } from "@/features/showcase/media";
 import type { MyShowcaseItem, ShowcaseItem, ShowcaseSpace, ShowcaseSpaceView, ShowcaseViewItem } from "@/features/showcase/types";
@@ -56,6 +57,7 @@ export function ShowcaseGallery({ profileId = null }: { profileId?: string | nul
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState<"newest" | "likes" | "bookmarks">("newest");
   const [bookmarkedOnly, setBookmarkedOnly] = useState(false);
+  const [directoryView, setDirectoryView] = useState<"spaces" | "keyboards">("spaces");
   const activeBookmarkFilter = signedIn && bookmarkedOnly;
 
   const loadSpace = useCallback(async () => {
@@ -126,10 +128,11 @@ export function ShowcaseGallery({ profileId = null }: { profileId?: string | nul
   }, [activeBookmarkFilter, profileId, query, sort, t]);
 
   useEffect(() => {
+    if (!profileId && directoryView === "spaces") return;
     /* The initial state already represents loading. Start the external request
        in a microtask so the effect itself does not synchronously cascade state. */
     void Promise.resolve().then(() => load(0));
-  }, [load]);
+  }, [directoryView, load, profileId]);
 
   async function toggle(itemId: string, kind: "like" | "bookmark") {
     const supabase = getSupabaseClient();
@@ -192,6 +195,13 @@ export function ShowcaseGallery({ profileId = null }: { profileId?: string | nul
           }}><ImagePlus size={17} />{t("키보드 등록", "Add keyboard")}</button> : null}
         </div>
       </header>}
+
+      {!profileId ? <div className={styles.directoryTabs} role="tablist" aria-label={t("아카이브 보기 방식", "Archive view")}>
+        <button type="button" role="tab" aria-selected={directoryView === "spaces"} data-active={directoryView === "spaces"} onClick={() => setDirectoryView("spaces")}>{t("공간 둘러보기", "Explore spaces")}</button>
+        <button type="button" role="tab" aria-selected={directoryView === "keyboards"} data-active={directoryView === "keyboards"} onClick={() => setDirectoryView("keyboards")}>{t("키보드 전체", "All keyboards")}</button>
+      </div> : null}
+
+      {!profileId && directoryView === "spaces" ? <ShowcaseSpaceDirectory /> : <>
 
       <div className={styles.toolbar}>
         <strong>{t(`키보드 ${total.toLocaleString()}대`, `${total.toLocaleString()} keyboards`)}</strong>
@@ -265,6 +275,7 @@ export function ShowcaseGallery({ profileId = null }: { profileId?: string | nul
           {t("더 보기", "Load more")}
         </button>
       ) : null}
+      </>}
 
       {managerOpen ? <ShowcaseManager onClose={() => setManagerOpen(false)} onAdd={() => { setManagerOpen(false); setEditingItem(null); setEditorOpen(true); }} onEdit={(item) => { setManagerOpen(false); setEditingItem(item); setEditorOpen(true); }} onChanged={() => void load(0)} /> : null}
       {editorOpen ? <ShowcaseEditor item={editingItem} onClose={() => { setEditorOpen(false); setEditingItem(null); }} onSaved={() => void load(0)} /> : null}

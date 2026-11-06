@@ -93,3 +93,15 @@ export type ShowcaseSpace = {
 };
 
 export type ShowcaseSpaceView = ShowcaseSpace & { profilePhotoUrl: string | null };
+
+export type ShowcaseSpaceDirectoryItem = Omit<ShowcaseSpace, "layout" | "is_owner"> & {
+  featured_title: string;
+  featured_thumbnail_path: string;
+  last_published_at: string;
+  total_count?: number;
+};
+
+export type ShowcaseSpaceDirectoryView = ShowcaseSpaceDirectoryItem & {
+  profilePhotoUrl: string | null;
+  featuredThumbnailUrl: string | null;
+};

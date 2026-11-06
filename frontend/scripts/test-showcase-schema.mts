@@ -17,6 +17,10 @@ const storageFixMigration = await readFile(
   new URL("../../supabase/migrations/0073_fix_showcase_storage_rls.sql", import.meta.url),
   "utf8",
 );
+const directoryMigration = await readFile(
+  new URL("../../supabase/migrations/0074_showcase_space_directory.sql", import.meta.url),
+  "utf8",
+);
 
 assert.match(migration, /pg_advisory_xact_lock/, "quota creation must be serialized");
 assert.match(migration, />= 10/, "account limit must be enforced by Postgres");
@@ -44,5 +48,9 @@ assert.match(spacesMigration, /revoke all on table public\.keyboard_showcase_spa
 assert.doesNotMatch(storageFixMigration, /metadata\s*->>\s*'size'/, "storage INSERT policies cannot rely on metadata populated after insertion");
 assert.match(storageFixMigration, /i\.id::text = \(storage\.foldername\(name\)\)\[2\]/, "uploads must map to a real archive item");
 assert.match(storageFixMigration, /storage\.filename\(name\) in \('image\.webp', 'thumbnail\.webp'\)/, "uploads must use fixed image filenames");
+assert.match(directoryMigration, /create or replace function public\.get_showcase_spaces/i, "the archive needs a personal-space directory");
+assert.match(directoryMigration, /i\.status = 'published'/, "the space directory must only count published keyboards");
+assert.match(directoryMigration, /left join lateral/i, "each space needs a representative keyboard preview");
+assert.match(directoryMigration, /count\(\*\) over \(\)/, "the space directory needs pagination totals");
 
 console.log("Showcase quota, publication, storage and write-boundary guards passed.");
