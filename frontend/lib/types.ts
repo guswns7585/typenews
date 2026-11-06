@@ -44,6 +44,8 @@ export type ContentItem = {
   text: string;
   title?: string;
   sourceUrl?: string;
+  /** DB 문장에 표시할 제공자·저자·화자 또는 작품 출처. */
+  sourceName?: string;
   thumbnailUrl?: string;
   /**
    * sentences 표의 번호. 서버가 점수를 다시 세어 대조하는 데 쓴다.

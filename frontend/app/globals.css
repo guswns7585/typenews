@@ -2835,6 +2835,29 @@ body.bg-custom-gradient {
   letter-spacing: 0.5px;
 }
 
+.sentence-attribution {
+  position: absolute;
+  right: var(--surface-pad-x, 32px);
+  bottom: 10px;
+  z-index: 2;
+  max-width: calc(100% - (var(--surface-pad-x, 32px) * 2));
+  overflow: hidden;
+  color: var(--color-ink-muted-48);
+  font-family: var(--font-display);
+  font-size: 11px;
+  font-weight: 650;
+  line-height: 1.2;
+  letter-spacing: 0;
+  text-decoration: none;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+a.sentence-attribution:hover {
+  color: var(--color-ink-muted-80);
+  text-decoration: underline;
+}
+
 /* 문장과 입력 영역을 가르는 선.
    양끝까지 그으면 두 칸이 완전히 갈라져 보인다. 좌우 안쪽 여백만큼 물러나게 해서
    한 영역을 나눠 쓰는 인상을 준다. 흰 선은 유리 위에서 거의 보이지 않아
@@ -8735,6 +8758,12 @@ html[data-visual-theme="admin"] .admin-lock h1 {
 
   #sentence {
     min-height: 96px;
+  }
+
+  .sentence-attribution {
+    right: 18px;
+    bottom: 9px;
+    max-width: calc(100% - 36px);
   }
 
   .typing-surface #sentence::after {

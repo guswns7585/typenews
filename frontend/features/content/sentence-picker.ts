@@ -75,7 +75,12 @@ const englishNewsUrl = "https://feeds.bbci.co.uk/news/world/rss.xml";
  * `id`는 sentences 표의 번호다. 서버가 이 번호로 원문을 찾아 점수를 다시 센다.
  * JSON 폴백에는 번호가 없으므로 null이고, 그때는 검산이 그냥 건너뛰어진다.
  */
-type BundleSentence = { id: number | null; text: string };
+type BundleSentence = {
+  id: number | null;
+  text: string;
+  sourceName?: string;
+  sourceUrl?: string;
+};
 
 const localCache = new Map<string, BundleSentence[]>();
 const newsCache = new Map<string, ContentItem[]>();
@@ -118,6 +123,47 @@ function shuffle<T>(items: T[]) {
  *    추가하다 1,000을 넘기면 그 뒤 문장은 영영 안 나오게 된다. 그래서 나눠 받는다.
  */
 const DB_PAGE_SIZE = 1000;
+const RUSEUPI_SOURCE = {
+  firstId: 4706,
+  lastId: 5405,
+  name: "루습히",
+  url: "https://brunch.co.kr/@ruseupi/218",
+} as const;
+const LEGACY_VERIFIED_SOURCES: Record<number, string> = {
+  270: "루트비히 비트겐슈타인 · 논리철학논고",
+  272: "게오르크 헤겔 · 법철학",
+  273: "소크라테스 · 플라톤의 소크라테스의 변명",
+  274: "J. R. R. 톨킨 · 반지의 제왕",
+  277: "에이브러햄 링컨 · 분열된 집 연설",
+  280: "자애경",
+  282: "신용호",
+  286: "루트비히 비트겐슈타인 · 논리철학논고",
+  287: "토머스 홉스 · 리바이어던",
+  289: "윈스턴 처칠",
+  290: "마틴 루터 킹 주니어",
+  292: "칼 세이건 · 콘택트",
+  293: "프란시스코 고야 · 이성의 잠은 괴물을 낳는다",
+  295: "찰스 J. 사이크스",
+  296: "찰리 채플린",
+  299: "나관중 · 삼국지연의",
+  302: "벤저민 프랭클린",
+  303: "존 F. 케네디 · 1962년 예일대학교 연설",
+  305: "프란츠 카프카 · 오스카 폴라크에게 보낸 편지",
+  309: "바뤼흐 스피노자",
+  310: "한스 크리스티안 안데르센",
+  315: "세네카",
+  316: "에피쿠로스",
+  362: "김연수 · 파도가 바다의 일이라면",
+  396: "커트 코베인",
+  398: "공자 · 논어",
+  399: "장자",
+  413: "유베날리스 · 풍자시",
+  414: "천원돌파 그렌라간 · 카미나",
+  415: "하이큐!! · 오이카와 토오루",
+  416: "슬램덩크 · 안자이 미츠요시",
+  418: "코드 기아스 · 를르슈 람페르지",
+  419: "센과 치히로의 행방불명 · 제니바",
+};
 
 async function fetchDbSentences(language: Language, mode: LocalMode, filter: BundleFilter) {
   const supabase = getSupabaseClient();
@@ -126,32 +172,55 @@ async function fetchDbSentences(language: Language, mode: LocalMode, filter: Bun
   const rows: BundleSentence[] = [];
 
   for (let from = 0; ; from += DB_PAGE_SIZE) {
-    let query = supabase
+    const buildQuery = (withSource: boolean) => {
+      let query = supabase
       .from("sentences")
       // id는 서버 검산용이다. 이것이 없으면 점수를 대조할 방법이 없다.
-      .select("id,text")
+      .select(withSource ? "id,text,source_name,source_url" : "id,text")
       .eq("language", language)
       .eq("enabled", true);
 
-    if (filter === "meme") {
-      /* 밈은 수가 적어서(2026-07-30 기준 25개) 단문·장문을 함께 담는다.
-         모드를 나누면 장문 밈 2개짜리 목록이 따로 생긴다. */
-      query = query.in("mode", ["short", "long"]).eq("is_meme", true);
-    } else {
-      query = query.eq("mode", mode);
-      if (filter === "nomeme") query = query.eq("is_meme", false);
-    }
+      if (filter === "meme") {
+        /* 밈은 수가 적어서(2026-07-30 기준 25개) 단문·장문을 함께 담는다.
+           모드를 나누면 장문 밈 2개짜리 목록이 따로 생긴다. */
+        query = query.in("mode", ["short", "long"]).eq("is_meme", true);
+      } else {
+        query = query.eq("mode", mode);
+        if (filter === "nomeme") query = query.eq("is_meme", false);
+      }
+      return query.order("id").range(from, from + DB_PAGE_SIZE - 1);
+    };
 
     // 순서를 고정하지 않으면 페이지마다 같은 행이 섞여 들어올 수 있다.
-    const { data, error } = await query.order("id").range(from, from + DB_PAGE_SIZE - 1);
+    let { data, error } = await buildQuery(true);
+    /* 출처 UI를 운영에 올리기 전 개발 서버도 확인할 수 있게 한다. 0075가 아직
+       적용되지 않은 DB에서는 기본 칼럼으로 한 번 더 읽고, 이번에 넣은 연속 ID에만
+       공유자 출처를 붙인다. 마이그레이션 적용 뒤에는 이 경로를 타지 않는다. */
+    const sourceColumnsUnavailable = Boolean(error?.message?.includes("source_name") || error?.message?.includes("source_url"));
+    if (sourceColumnsUnavailable) ({ data, error } = await buildQuery(false));
     if (error) {
       console.error("문장 DB 조회 실패, JSON으로 대체합니다", error);
       // 첫 페이지부터 실패했으면 JSON으로 넘긴다. 뒷페이지만 실패했으면 받은 만큼 쓴다.
       return rows.length ? rows : null;
     }
 
-    const page = (data ?? [])
-      .map((row) => ({ id: Number(row.id), text: String(row.text) }))
+    const page = ((data ?? []) as unknown as Array<{
+      id: number | string;
+      text: string;
+      source_name?: string | null;
+      source_url?: string | null;
+    }>)
+      .map((row) => {
+        const id = Number(row.id);
+        const legacyRuseupiSource = sourceColumnsUnavailable && id >= RUSEUPI_SOURCE.firstId && id <= RUSEUPI_SOURCE.lastId;
+        const verifiedLegacySource = sourceColumnsUnavailable ? LEGACY_VERIFIED_SOURCES[id] : undefined;
+        return {
+          id,
+          text: String(row.text),
+          sourceName: row.source_name ? String(row.source_name) : verifiedLegacySource ?? (legacyRuseupiSource ? RUSEUPI_SOURCE.name : undefined),
+          sourceUrl: row.source_url ? String(row.source_url) : legacyRuseupiSource ? RUSEUPI_SOURCE.url : undefined,
+        };
+      })
       .filter((row) => Boolean(row.text) && Number.isFinite(row.id));
     rows.push(...page);
 
@@ -340,6 +409,8 @@ async function pickLocalSentence(language: Language, mode: LocalMode, filter: Bu
     id: randomId(),
     text: picked.text,
     sentenceId: picked.id ?? undefined,
+    sourceName: picked.sourceName,
+    sourceUrl: picked.sourceUrl,
   } satisfies ContentItem;
 }
 
