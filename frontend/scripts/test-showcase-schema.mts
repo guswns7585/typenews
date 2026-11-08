@@ -21,6 +21,11 @@ const directoryMigration = await readFile(
   new URL("../../supabase/migrations/0074_showcase_space_directory.sql", import.meta.url),
   "utf8",
 );
+const anonymousMediaFixMigration = await readFile(
+  new URL("../../supabase/migrations/0079_fix_anonymous_showcase_media_read.sql", import.meta.url),
+  "utf8",
+);
+const anonymousMediaFixSql = anonymousMediaFixMigration.replace(/^\s*--.*$/gm, "");
 
 assert.match(migration, /pg_advisory_xact_lock/, "quota creation must be serialized");
 assert.match(migration, />= 10/, "account limit must be enforced by Postgres");
@@ -52,5 +57,9 @@ assert.match(directoryMigration, /create or replace function public\.get_showcas
 assert.match(directoryMigration, /i\.status = 'published'/, "the space directory must only count published keyboards");
 assert.match(directoryMigration, /left join lateral/i, "each space needs a representative keyboard preview");
 assert.match(directoryMigration, /count\(\*\) over \(\)/, "the space directory needs pagination totals");
+assert.match(anonymousMediaFixMigration, /policyname like 'keyboard_showcase%'/, "legacy archive read policies must be removed");
+assert.match(anonymousMediaFixMigration, /create or replace function public\.can_read_showcase_media/i, "media reads need an anon-safe authorization helper");
+assert.doesNotMatch(anonymousMediaFixSql, /current_profile_id\(\)/, "anonymous media reads must not execute current_profile_id");
+assert.match(anonymousMediaFixMigration, /grant execute on function public\.can_read_showcase_media\(text\) to anon, authenticated/i, "the safe media helper must be callable by archive readers");
 
 console.log("Showcase quota, publication, storage and write-boundary guards passed.");
