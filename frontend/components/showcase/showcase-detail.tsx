@@ -5,6 +5,8 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { useAuthProfile } from "@/components/auth/auth-button";
 import { ShowcaseAudioPlayer } from "@/components/showcase/showcase-audio-player";
+import { ProfileDecorationLine } from "@/components/profile/profile-decoration-line";
+import { loadProfileDecorations, type ProfileDecoration } from "@/features/profile/decorations";
 import { signedShowcaseUrl } from "@/features/showcase/media";
 import { SHOWCASE_BUILD_FIELD_MAP, SHOWCASE_BUILD_SECTIONS, type ShowcaseItem, type ShowcaseViewItem } from "@/features/showcase/types";
 import { publicProfilePhotoUrl } from "@/features/profile/profile-photo";
@@ -20,6 +22,7 @@ export function ShowcaseDetail({ itemId }: { itemId: string }) {
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(true);
   const [reportOpen, setReportOpen] = useState(false);
+  const [decoration, setDecoration] = useState<ProfileDecoration | null>(null);
 
   useEffect(() => {
     const supabase = getSupabaseClient();
@@ -39,6 +42,10 @@ export function ShowcaseDetail({ itemId }: { itemId: string }) {
         ]);
         if (!imageUrl || !thumbnailUrl) throw new Error(t("사진을 불러오지 못했습니다", "Could not load the photo"));
         if (!active) return;
+        try {
+          const loaded = await loadProfileDecorations(supabase, [row.profile_id]);
+          if (active) setDecoration(loaded.get(row.profile_id) ?? null);
+        } catch { /* The item does not depend on profile decorations. */ }
         setItem({
           ...row,
           imageUrl,
@@ -119,7 +126,7 @@ export function ShowcaseDetail({ itemId }: { itemId: string }) {
                 <img src={item.profilePhotoUrl} alt="" />
               ) : item.display_name.slice(0, 1)}
             </span>
-              <Link href={`/showcase?profile=${item.profile_id}`}>{item.display_name}</Link>
+              <Link href={`/showcase?profile=${item.profile_id}`}>{item.display_name}</Link><ProfileDecorationLine decoration={decoration} />
           </div>
           <h1>{item.title}</h1>
           {item.description ? <section className={styles.buildNotes}><h2>{t("빌드 노트", "Build notes")}</h2><p className={styles.description}>{item.description}</p></section> : null}

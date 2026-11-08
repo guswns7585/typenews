@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useAuthProfile } from "@/components/auth/auth-button";
 import { AccountSettings } from "@/components/settings/account-settings";
+import { ProfileAchievements } from "@/components/profile/profile-achievements";
 import { BackgroundOptions } from "@/components/settings/background-options";
 import { FONT_OPTIONS } from "@/lib/font-options";
 import { useUiLanguage } from "@/lib/ui-language";
@@ -87,6 +88,7 @@ export function SettingsMenu() {
           </header>
 
           <AccountSettings />
+          <ProfileAchievements />
           <section className="settings-section">
             <h4>{t("사이트 언어", "Site language")}</h4>
             <div className="settings-segmented" role="group" aria-label={t("사이트 언어", "Site language")}>

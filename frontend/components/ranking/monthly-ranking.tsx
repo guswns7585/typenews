@@ -3,6 +3,8 @@
 import { type CSSProperties, useEffect, useState } from "react";
 import { AnimatePresence, LayoutGroup, motion, useReducedMotion } from "motion/react";
 import { ScoreValue } from "@/components/common/score-value";
+import { ProfileDecorationLine } from "@/components/profile/profile-decoration-line";
+import { loadProfileDecorations, type ProfileDecoration } from "@/features/profile/decorations";
 import {
   PROFILE_PHOTO_UPDATED_EVENT,
   publicProfilePhotoUrl,
@@ -47,6 +49,7 @@ export function MonthlyRanking() {
   const reduceMotion = useReducedMotion();
   const [entries, setEntries] = useState<RankingEntry[]>([]);
   const [myEntry, setMyEntry] = useState<MyRankingEntry | null>(null);
+  const [decorations, setDecorations] = useState<Map<string, ProfileDecoration>>(new Map());
   const [expandedCardKey, setExpandedCardKey] = useState<string | null>(null);
   const [status, setStatus] = useState<"loading" | "config" | "unavailable" | "empty" | "error" | "">("loading");
 
@@ -88,6 +91,12 @@ export function MonthlyRanking() {
         setStatus(rows.length ? "" : "empty");
         hasLoaded = true;
 
+        try {
+          setDecorations(await loadProfileDecorations(supabase, rows.map((row) => row.profile_id)));
+        } catch {
+          setDecorations(new Map());
+        }
+
         const { data: sessionData } = await supabase.auth.getSession();
         if (!active) return;
         if (!sessionData.session) {
@@ -114,6 +123,14 @@ export function MonthlyRanking() {
           thumbnailPath: row.thumbnail_path,
           photoUpdatedAt: row.photo_updated_at,
         } : null);
+        if (row && !rows.some((entry) => entry.profile_id === row.profile_id)) {
+          try {
+            const mine = await loadProfileDecorations(supabase, [row.profile_id]);
+            if (active) setDecorations((current) => new Map([...current, ...mine]));
+          } catch {
+            // A decoration failure must not hide the user's ranking.
+          }
+        }
       } catch {
         if (active && !hasLoaded) setStatus("error");
       }
@@ -218,6 +235,7 @@ export function MonthlyRanking() {
           <span className="card-left">
             <span className="rank-badge">{rank ?? "–"}</span>
             <span className="rank-name">{entry.displayName}</span>
+            <ProfileDecorationLine decoration={decorations.get(entry.profileId)} />
           </span>
           <span className="card-right">
             <ScoreValue value={entry.score} unit={t("점", " points")} />

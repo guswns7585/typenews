@@ -30,6 +30,10 @@ const adminReportRpcMigration = await readFile(
   new URL("../../supabase/migrations/0080_restore_showcase_admin_report_rpcs.sql", import.meta.url),
   "utf8",
 );
+const profileAchievementsMigration = await readFile(
+  new URL("../../supabase/migrations/0081_profile_titles_and_badges.sql", import.meta.url),
+  "utf8",
+);
 
 assert.match(migration, /pg_advisory_xact_lock/, "quota creation must be serialized");
 assert.match(migration, />= 10/, "account limit must be enforced by Postgres");
@@ -69,5 +73,10 @@ assert.match(adminReportRpcMigration, /create function public\.get_admin_showcas
 assert.match(adminReportRpcMigration, /create function public\.admin_review_showcase_report/i, "missing report review actions must be restored");
 assert.match(adminReportRpcMigration, /grant execute on function public\.get_admin_showcase_reports\(boolean, integer\) to authenticated/i, "admins must be able to load report queues");
 assert.match(adminReportRpcMigration, /notify pgrst, 'reload schema'/i, "PostgREST must reload restored moderation RPCs");
+assert.match(profileAchievementsMigration, /cardinality\(equipped_badge_ids\) <= 3/i, "profiles may equip at most three badges");
+assert.match(profileAchievementsMigration, /create or replace function public\.sync_my_profile_achievements/i, "earned achievements need a server-side sync");
+assert.match(profileAchievementsMigration, /create or replace function public\.update_my_profile_decorations/i, "profile decorations need a protected update RPC");
+assert.match(profileAchievementsMigration, /create or replace function public\.get_profile_decorations/i, "public profile surfaces need decoration metadata");
+assert.doesNotMatch(profileAchievementsMigration, /grant\s+(?:insert|update|delete)[\s\S]{0,100}profile_(?:achievements|decorations)/i, "achievement writes must stay behind RPC functions");
 
 console.log("Showcase quota, publication, storage and write-boundary guards passed.");

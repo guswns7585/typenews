@@ -3,6 +3,8 @@
 import { LoaderCircle } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
+import { ProfileDecorationLine } from "@/components/profile/profile-decoration-line";
+import { loadProfileDecorations, type ProfileDecoration } from "@/features/profile/decorations";
 import { signedShowcaseUrl } from "@/features/showcase/media";
 import type { ShowcaseSpaceDirectoryItem, ShowcaseSpaceDirectoryView } from "@/features/showcase/types";
 import { publicProfilePhotoUrl } from "@/features/profile/profile-photo";
@@ -38,6 +40,7 @@ export function ShowcaseSpaceDirectory() {
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [message, setMessage] = useState("");
+  const [decorations, setDecorations] = useState<Map<string, ProfileDecoration>>(new Map());
 
   useEffect(() => {
     const timer = window.setTimeout(() => setQuery(queryDraft.trim()), 300);
@@ -63,6 +66,10 @@ export function ShowcaseSpaceDirectory() {
       });
       if (error) throw error;
       const rows = (data ?? []) as ShowcaseSpaceDirectoryItem[];
+      try {
+        const loaded = await loadProfileDecorations(supabase, rows.map((row) => row.profile_id));
+        setDecorations((current) => new Map([...current, ...loaded]));
+      } catch { /* Spaces still render without profile decorations. */ }
       const resolved = await Promise.all(rows.map(resolveSpace));
       setSpaces((current) => offset ? [...current, ...resolved] : resolved);
       setTotal(Number(rows[0]?.total_count ?? offset + rows.length));
@@ -106,7 +113,7 @@ export function ShowcaseSpaceDirectory() {
               ) : space.display_name.slice(0, 1)}</span>
             </div>
             <div className={styles.spaceCardBody}>
-              <div><h2>{space.display_name}</h2></div>
+              <div><h2>{space.display_name}<ProfileDecorationLine decoration={decorations.get(space.profile_id)} /></h2></div>
               {space.intro ? <p>{space.intro}</p> : null}
               <strong className={styles.spaceFeaturedTitle}>{space.featured_title}</strong>
               <div className={styles.spaceCardStats}><span>{t("키보드", "Keyboards")} {space.keyboard_count}</span><span>{t("좋아요", "Likes")} {space.total_likes}</span></div>
