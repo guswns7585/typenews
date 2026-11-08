@@ -20,6 +20,8 @@ comment on column public.sentences.source_name is
 comment on column public.sentences.source_url is
   '출처를 확인할 수 있는 HTTPS 링크.';
 
+-- 2026-11-06 루습히님이 공유한 문장 모음에서 추가한 700개.
+-- 삽입 직후 발급된 연속 ID만 대상으로 하며 기존 문장은 변경하지 않는다.
 update public.sentences
 set source_name = '루습히',
     source_url = 'https://brunch.co.kr/@ruseupi/218'

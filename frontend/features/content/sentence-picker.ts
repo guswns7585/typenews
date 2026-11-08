@@ -174,11 +174,11 @@ async function fetchDbSentences(language: Language, mode: LocalMode, filter: Bun
   for (let from = 0; ; from += DB_PAGE_SIZE) {
     const buildQuery = (withSource: boolean) => {
       let query = supabase
-        .from("sentences")
-        // id는 서버 검산용이다. 이것이 없으면 점수를 대조할 방법이 없다.
-        .select(withSource ? "id,text,source_name,source_url" : "id,text")
-        .eq("language", language)
-        .eq("enabled", true);
+      .from("sentences")
+      // id는 서버 검산용이다. 이것이 없으면 점수를 대조할 방법이 없다.
+      .select(withSource ? "id,text,source_name,source_url" : "id,text")
+      .eq("language", language)
+      .eq("enabled", true);
 
       if (filter === "meme") {
         /* 밈은 수가 적어서(2026-07-30 기준 25개) 단문·장문을 함께 담는다.
@@ -193,7 +193,9 @@ async function fetchDbSentences(language: Language, mode: LocalMode, filter: Bun
 
     // 순서를 고정하지 않으면 페이지마다 같은 행이 섞여 들어올 수 있다.
     let { data, error } = await buildQuery(true);
-    /* 출처 칼럼 마이그레이션 전 DB에서도 개발 서버가 문장을 읽을 수 있게 한다. */
+    /* 출처 UI를 운영에 올리기 전 개발 서버도 확인할 수 있게 한다. 0075가 아직
+       적용되지 않은 DB에서는 기본 칼럼으로 한 번 더 읽고, 이번에 넣은 연속 ID에만
+       공유자 출처를 붙인다. 마이그레이션 적용 뒤에는 이 경로를 타지 않는다. */
     const sourceColumnsUnavailable = Boolean(error?.message?.includes("source_name") || error?.message?.includes("source_url"));
     if (sourceColumnsUnavailable) ({ data, error } = await buildQuery(false));
     if (error) {
@@ -207,17 +209,18 @@ async function fetchDbSentences(language: Language, mode: LocalMode, filter: Bun
       text: string;
       source_name?: string | null;
       source_url?: string | null;
-    }>).map((row) => {
-      const id = Number(row.id);
-      const legacyRuseupiSource = sourceColumnsUnavailable && id >= RUSEUPI_SOURCE.firstId && id <= RUSEUPI_SOURCE.lastId;
-      const verifiedLegacySource = sourceColumnsUnavailable ? LEGACY_VERIFIED_SOURCES[id] : undefined;
-      return {
-        id,
-        text: String(row.text),
-        sourceName: row.source_name ? String(row.source_name) : verifiedLegacySource ?? (legacyRuseupiSource ? RUSEUPI_SOURCE.name : undefined),
-        sourceUrl: row.source_url ? String(row.source_url) : legacyRuseupiSource ? RUSEUPI_SOURCE.url : undefined,
-      };
-    })
+    }>)
+      .map((row) => {
+        const id = Number(row.id);
+        const legacyRuseupiSource = sourceColumnsUnavailable && id >= RUSEUPI_SOURCE.firstId && id <= RUSEUPI_SOURCE.lastId;
+        const verifiedLegacySource = sourceColumnsUnavailable ? LEGACY_VERIFIED_SOURCES[id] : undefined;
+        return {
+          id,
+          text: String(row.text),
+          sourceName: row.source_name ? String(row.source_name) : verifiedLegacySource ?? (legacyRuseupiSource ? RUSEUPI_SOURCE.name : undefined),
+          sourceUrl: row.source_url ? String(row.source_url) : legacyRuseupiSource ? RUSEUPI_SOURCE.url : undefined,
+        };
+      })
       .filter((row) => Boolean(row.text) && Number.isFinite(row.id));
     rows.push(...page);
 
