@@ -10,7 +10,7 @@ Development branch: `feature/keyboard-showcase`.
 - One representative image and one typing-sound recording per keyboard.
 - Target image limit: 1600 px, 1.5 MB; audio: 30-45 seconds, 1 MB.
 - Store files in object storage; keep metadata and object paths in Postgres.
-- Build fields plus free-form description. KeyXIF URL/import should preserve an imported snapshot and allow manual edits; confirm the actual KeyXIF export format before implementing a parser.
+- Build fields plus free-form description. KeyXIF image integration is deferred until an export or integration path for representative images is defined.
 - Collection accessible through a profile tab and ordinary ID-based sharing links; no custom public slug required.
 - Likes, bookmarks, reporting, owner editing, and moderator hiding.
 - Generate a local PNG/WebP collage of selected keyboards. Include grid selection, ordering, image fit, captions, light/dark backgrounds, and optional author name.
@@ -37,7 +37,7 @@ Implement this feature independently from `feature/longform-recording`. The init
 - [x] Likes, bookmarks, reports and moderator hide RPC.
 - [x] Owner dashboard for editing, unpublishing and deleting existing keyboards.
 - [x] Admin report queue with dismiss, hide and restore actions.
-- [x] KeyXIF web-backup JSON parser with preset selection and safe field mapping.
+- [ ] KeyXIF-generated representative image integration (separate future scope).
 - [x] Local PNG collage exporter for up to 10 selected keyboards.
 - [x] Author-specific archive view linked from author names.
 - [x] Search across keyboard names, build details and authors; newest/like/bookmark sorting.
@@ -48,3 +48,5 @@ Implement this feature independently from `feature/longform-recording`. The init
 - [x] Author-first personal archive space with introduction, collection stats and featured keyboard.
 - [x] Owner-selectable mood, accent color, banner pattern and gallery/shelf layout.
 - [x] Personal-space directory as the default archive view, with representative keyboards, search and activity/collection/like sorting.
+- [x] Direct “my archive” entry points from account settings and the archive landing page.
+- [x] Versioned media replacement with failed-upload cleanup that preserves currently published files.

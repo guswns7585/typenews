@@ -1,14 +1,16 @@
 "use client";
 
-import { Bookmark, FolderCog, Heart, ImagePlus, LoaderCircle, Music2, Palette, RefreshCw, Search, Sparkles } from "lucide-react";
+import { Bookmark, Heart, LoaderCircle } from "lucide-react";
 import Link from "next/link";
-import { useCallback, useEffect, useState, type CSSProperties } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { ShowcaseEditor } from "@/components/showcase/showcase-editor";
 import { ShowcaseManager } from "@/components/showcase/showcase-manager";
 import { ShowcaseSpaceEditor } from "@/components/showcase/showcase-space-editor";
 import { ShowcaseSpaceDirectory } from "@/components/showcase/showcase-space-directory";
+import { ShowcaseAudioPlayer } from "@/components/showcase/showcase-audio-player";
 import { useAuthProfile } from "@/components/auth/auth-button";
 import { signedShowcaseUrl } from "@/features/showcase/media";
+import { readShowcaseDraft, type ShowcaseEditorDraft } from "@/features/showcase/audio-draft";
 import type { MyShowcaseItem, ShowcaseItem, ShowcaseSpace, ShowcaseSpaceView, ShowcaseViewItem } from "@/features/showcase/types";
 import { publicProfilePhotoUrl } from "@/features/profile/profile-photo";
 import { getSupabaseClient } from "@/lib/supabase/client";
@@ -41,7 +43,7 @@ async function resolveItem(item: ShowcaseItem): Promise<ShowcaseViewItem> {
 
 export function ShowcaseGallery({ profileId = null }: { profileId?: string | null }) {
   const { t } = useUiLanguage();
-  const { signedIn, authReady } = useAuthProfile();
+  const { signedIn, authReady, profileId: myProfileId } = useAuthProfile();
   const [items, setItems] = useState<ShowcaseViewItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -49,6 +51,7 @@ export function ShowcaseGallery({ profileId = null }: { profileId?: string | nul
   const [managerOpen, setManagerOpen] = useState(false);
   const [spaceEditorOpen, setSpaceEditorOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<MyShowcaseItem | null>(null);
+  const [restoredDraft, setRestoredDraft] = useState<ShowcaseEditorDraft | null>(null);
   const [message, setMessage] = useState("");
   const [total, setTotal] = useState(0);
   const [profileName, setProfileName] = useState("");
@@ -59,6 +62,23 @@ export function ShowcaseGallery({ profileId = null }: { profileId?: string | nul
   const [bookmarkedOnly, setBookmarkedOnly] = useState(false);
   const [directoryView, setDirectoryView] = useState<"spaces" | "keyboards">("spaces");
   const activeBookmarkFilter = signedIn && bookmarkedOnly;
+
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    const draftId = url.searchParams.get("showcaseAudioDraft");
+    if (!draftId) return;
+    url.searchParams.delete("showcaseAudioDraft");
+    window.history.replaceState(window.history.state, "", `${url.pathname}${url.search}${url.hash}`);
+    void readShowcaseDraft(draftId).then((draft) => {
+      if (!draft) {
+        setMessage(t("임시 저장한 아카이브 편집 내용을 찾지 못했습니다", "The saved archive draft could not be found"));
+        return;
+      }
+      setRestoredDraft(draft);
+      setEditingItem(draft.item);
+      setEditorOpen(true);
+    }).catch((error) => setMessage(messageOf(error, t("아카이브 편집 내용을 복원하지 못했습니다", "Could not restore the archive draft"))));
+  }, [t]);
 
   const loadSpace = useCallback(async () => {
     if (!profileId) { setSpace(null); return; }
@@ -118,7 +138,7 @@ export function ShowcaseGallery({ profileId = null }: { profileId?: string | nul
       const detail = messageOf(error, t("아카이브를 불러오지 못했습니다", "Could not load the archive"));
       setMessage(
         detail.includes("get_showcase_feed") && detail.includes("schema cache")
-          ? t("아카이브 데이터베이스를 준비하는 중입니다", "The archive database is being prepared")
+          ? t("데이터베이스 준비 중", "Database setup in progress")
           : detail,
       );
     } finally {
@@ -138,7 +158,7 @@ export function ShowcaseGallery({ profileId = null }: { profileId?: string | nul
     const supabase = getSupabaseClient();
     if (!supabase) return;
     if (!signedIn) {
-      setMessage(t("좋아요와 북마크는 로그인 후 사용할 수 있습니다", "Sign in to like or bookmark"));
+      setMessage(t("로그인 필요", "Sign-in required"));
       return;
     }
     const functionName = kind === "like" ? "toggle_showcase_like" : "toggle_showcase_bookmark";
@@ -161,38 +181,41 @@ export function ShowcaseGallery({ profileId = null }: { profileId?: string | nul
   }
 
   const featuredItem = space?.featured_item_id ? items.find((item) => item.item_id === space.featured_item_id) : null;
-  const spaceStyle = space ? ({ "--archive-accent": ({ rose: "#b85270", blue: "#4777ba", green: "#4f8168", amber: "#b4772f" })[space.accent] } as CSSProperties) : undefined;
   const canManage = signedIn && (!profileId || Boolean(space?.is_owner));
 
   return (
     <section className={styles.page}>
-      {profileId && space ? <header className={styles.personalHero} data-theme={space.theme} data-banner={space.banner} style={spaceStyle}>
-        <div className={styles.personalIdentity}>
-          <span className={styles.personalAvatar} data-empty={!space.profilePhotoUrl}>{space.profilePhotoUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={space.profilePhotoUrl} alt="" />
-          ) : space.display_name.slice(0, 1)}</span>
-          <div><span className={styles.eyebrow}>PERSONAL ARCHIVE</span><h1>{space.display_name}</h1><p>{space.intro || t("아직 공간 소개가 없습니다.", "This space has no introduction yet.")}</p></div>
-        </div>
-        <div className={styles.spaceStats}><span><strong>{space.keyboard_count}</strong>{t("키보드", "keyboards")}</span><span><strong>{space.total_likes}</strong>{t("받은 좋아요", "likes received")}</span></div>
-        {featuredItem ? <Link className={styles.featuredKeyboard} href={`/showcase/${featuredItem.item_id}`}><span><Sparkles size={14} />{t("대표 키보드", "Featured")}</span>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={featuredItem.thumbnailUrl} alt="" /><strong>{featuredItem.title}</strong></Link> : null}
-        <div className={styles.personalActions}><Link className={styles.backLink} href="/showcase">← {t("전체 아카이브", "All archives")}</Link>{space.is_owner ? <><button type="button" className={styles.secondaryButton} onClick={() => setSpaceEditorOpen(true)}><Palette size={16} />{t("공간 꾸미기", "Customize")}</button><button type="button" className={styles.secondaryButton} onClick={() => setManagerOpen(true)}><FolderCog size={16} />{t("키보드 관리", "Manage keyboards")}</button><button type="button" className={styles.primaryButton} onClick={() => { setEditingItem(null); setEditorOpen(true); }}><ImagePlus size={16} />{t("키보드 추가", "Add keyboard")}</button></> : null}</div>
-      </header> : <header className={styles.hero}>
+      {profileId && space ? <>
+        <Link className={styles.personalBackLink} href="/showcase">← {t("전체 아카이브", "All archives")}</Link>
+        <header className={styles.personalHero}>
+          <div className={styles.personalOverview}>
+            <div className={styles.personalIdentity}>
+              <span className={styles.personalAvatar} data-empty={!space.profilePhotoUrl}>{space.profilePhotoUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={space.profilePhotoUrl} alt="" />
+              ) : space.display_name.slice(0, 1)}</span>
+              <div><h1>{space.display_name}</h1>{space.intro ? <p>{space.intro}</p> : null}</div>
+            </div>
+            <div className={styles.spaceStats}><span><strong>{space.keyboard_count}</strong>{t("키보드", "keyboards")}</span><span><strong>{space.total_likes}</strong>{t("받은 좋아요", "likes received")}</span></div>
+            {space.is_owner ? <div className={styles.personalActions}><button type="button" className={styles.secondaryButton} onClick={() => setSpaceEditorOpen(true)}>{t("공간 정보 편집", "Edit space")}</button><button type="button" className={styles.secondaryButton} onClick={() => setManagerOpen(true)}>{t("키보드 관리", "Manage keyboards")}</button><button type="button" className={styles.primaryButton} onClick={() => { setEditingItem(null); setEditorOpen(true); }}>{t("키보드 추가", "Add keyboard")}</button></div> : null}
+          </div>
+          {featuredItem ? <Link className={styles.featuredKeyboard} href={`/showcase/${featuredItem.item_id}`}><span>{t("대표 키보드", "Featured")}</span>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={featuredItem.thumbnailUrl} alt="" /><strong>{featuredItem.title}</strong></Link> : <div className={styles.featuredEmpty}><span>{t("대표 키보드 없음", "No featured keyboard")}</span></div>}
+        </header>
+      </> : <header className={styles.hero}>
         <div>
-          <span className={styles.eyebrow}>TYPENEWS ARCHIVE</span>
-          <h1>{profileId ? (profileName ? t(`${profileName}의 아카이브`, `${profileName}'s archive`) : t("사용자 아카이브", "User archive")) : t("아카이브", "Archive")}</h1>
-          <p>{profileId ? t("이 사용자가 기록한 키보드와 빌드, 타건음입니다.", "Keyboards, builds, and typing sounds from this user.") : t("각자의 키보드와 빌드, 타건음을 한곳에서 구경해 보세요.", "Explore community keyboards, builds, and typing sounds.")}</p>
+          <h1 className={styles.heroTitle}>{profileId ? (profileName ? t(`${profileName}의 아카이브`, `${profileName}'s archive`) : t("사용자 아카이브", "User archive")) : t("아카이브", "Archive")}{!profileId ? <span className={styles.betaBadge}>Beta</span> : null}</h1>
           {profileId ? <Link className={styles.backLink} href="/showcase">← {t("전체 아카이브", "All archives")}</Link> : null}
         </div>
         <div className={styles.heroActions}>
-          {canManage ? <button type="button" className={styles.secondaryButton} onClick={() => setManagerOpen(true)}><FolderCog size={17} />{t("내 아카이브 관리", "Manage my archive")}</button> : null}
+          {!profileId && myProfileId ? <Link className={styles.secondaryButton} href={`/showcase?profile=${myProfileId}`}>{t("내 공간", "My space")}</Link> : null}
+          {canManage ? <button type="button" className={styles.secondaryButton} onClick={() => setManagerOpen(true)}>{t("내 아카이브 관리", "Manage my archive")}</button> : null}
           {!profileId || space?.is_owner ? <button type="button" className={styles.primaryButton} disabled={!authReady} onClick={() => {
             if (!authReady) return;
-            if (!signedIn) { setMessage(t("키보드 등록은 로그인 후 사용할 수 있습니다", "Sign in to add a keyboard")); return; }
+            if (!signedIn) { setMessage(t("로그인 필요", "Sign-in required")); return; }
             setEditingItem(null); setEditorOpen(true);
-          }}><ImagePlus size={17} />{t("키보드 등록", "Add keyboard")}</button> : null}
+          }}>{t("키보드 등록", "Add keyboard")}</button> : null}
         </div>
       </header>}
 
@@ -206,21 +229,19 @@ export function ShowcaseGallery({ profileId = null }: { profileId?: string | nul
       <div className={styles.toolbar}>
         <strong>{t(`키보드 ${total.toLocaleString()}대`, `${total.toLocaleString()} keyboards`)}</strong>
         <div className={styles.discoveryControls}>
-          <label className={styles.archiveSearch}><Search size={15} aria-hidden="true" /><input type="search" maxLength={80} value={queryDraft} onChange={(event) => setQueryDraft(event.target.value)} placeholder={t("키보드·빌드·작성자 검색", "Search keyboards, builds, authors")} aria-label={t("아카이브 검색", "Search archive")} /></label>
+          <label className={styles.archiveSearch}><input type="search" maxLength={80} value={queryDraft} onChange={(event) => setQueryDraft(event.target.value)} placeholder={t("키보드·빌드·작성자 검색", "Search keyboards, builds, authors")} aria-label={t("아카이브 검색", "Search archive")} /></label>
           <select value={sort} onChange={(event) => setSort(event.target.value as typeof sort)} aria-label={t("아카이브 정렬", "Sort archive")}><option value="newest">{t("최신순", "Newest")}</option><option value="likes">{t("좋아요순", "Most liked")}</option><option value="bookmarks">{t("북마크순", "Most bookmarked")}</option></select>
           {!profileId && signedIn ? <button type="button" className={styles.bookmarkFilter} data-active={activeBookmarkFilter} aria-pressed={activeBookmarkFilter} onClick={() => setBookmarkedOnly((current) => !current)}><Bookmark size={15} fill={activeBookmarkFilter ? "currentColor" : "none"} />{t("내 북마크", "My bookmarks")}</button> : null}
-          <button type="button" className={styles.iconButton} aria-label={t("새로고침", "Refresh")} disabled={loading} onClick={() => void load(0)}>
-          <RefreshCw className={loading ? styles.spinning : undefined} size={17} />
-          </button>
+          <button type="button" className={styles.textButton} disabled={loading} onClick={() => void load(0)}>{t("새로고침", "Refresh")}</button>
         </div>
       </div>
 
       {message ? <p className={styles.pageMessage} role="status">{message}</p> : null}
 
       {loading ? (
-        <div className={styles.loading}><LoaderCircle className={styles.spinning} />{t("아카이브를 여는 중입니다", "Opening the archive")}</div>
+        <div className={styles.loading}><LoaderCircle className={styles.spinning} />{t("불러오는 중", "Loading")}</div>
       ) : items.length ? (
-        <div className={styles.grid} data-layout={profileId ? space?.layout : undefined}>
+        <div className={styles.grid}>
           {items.map((item) => (
             <article className={styles.card} key={item.item_id}>
               <Link className={styles.cardImage} href={`/showcase/${item.item_id}`}>
@@ -240,12 +261,12 @@ export function ShowcaseGallery({ profileId = null }: { profileId?: string | nul
                 </div>
                 <Link className={styles.cardTitle} href={`/showcase/${item.item_id}`}>{item.title}</Link>
                 <div className={styles.buildTags}>
-                  {Object.values(item.build_info).filter(Boolean).slice(0, 3).map((value) => <span key={value}>{value}</span>)}
+                  {[item.build_info.case, item.build_info.switches, item.build_info.keycaps].filter((value): value is string => Boolean(value)).map((value) => <span key={value}>{value}</span>)}
                 </div>
                 {item.audioUrl ? (
-                  <audio className={styles.audio} controls preload="none" src={item.audioUrl} aria-label={`${item.title} ${t("타건음", "typing sound")}`} />
+                  <ShowcaseAudioPlayer src={item.audioUrl} durationHint={item.audio_duration_ms ? item.audio_duration_ms / 1000 : undefined} compact />
                 ) : (
-                  <span className={styles.noAudio}><Music2 size={13} />{t("타건음 없음", "No typing sound")}</span>
+                  <span className={styles.noAudio}>{t("타건음 없음", "No typing sound")}</span>
                 )}
                 <div className={styles.reactions}>
                   <button type="button" disabled={!authReady} data-active={item.liked_by_me} onClick={() => void toggle(item.item_id, "like")}>
@@ -263,8 +284,7 @@ export function ShowcaseGallery({ profileId = null }: { profileId?: string | nul
         </div>
       ) : (
         <div className={styles.empty}>
-          <ImagePlus size={30} />
-          <strong>{query || activeBookmarkFilter ? t("조건에 맞는 키보드가 없습니다", "No keyboards match these filters") : t("아직 기록된 키보드가 없습니다", "No keyboards in the archive yet")}</strong>
+          <strong>{query || activeBookmarkFilter ? t("검색 결과 없음", "No results") : t("등록된 키보드 없음", "No keyboards")}</strong>
           <span>{query || activeBookmarkFilter ? t("검색어나 필터를 바꿔 보세요.", "Try another search or filter.") : t("첫 번째 키보드를 올려 보세요.", "Add the first keyboard.")}</span>
         </div>
       )}
@@ -278,7 +298,7 @@ export function ShowcaseGallery({ profileId = null }: { profileId?: string | nul
       </>}
 
       {managerOpen ? <ShowcaseManager onClose={() => setManagerOpen(false)} onAdd={() => { setManagerOpen(false); setEditingItem(null); setEditorOpen(true); }} onEdit={(item) => { setManagerOpen(false); setEditingItem(item); setEditorOpen(true); }} onChanged={() => void load(0)} /> : null}
-      {editorOpen ? <ShowcaseEditor item={editingItem} onClose={() => { setEditorOpen(false); setEditingItem(null); }} onSaved={() => void load(0)} /> : null}
+      {editorOpen ? <ShowcaseEditor item={editingItem} restoredDraft={restoredDraft} onClose={() => { setEditorOpen(false); setEditingItem(null); setRestoredDraft(null); }} onSaved={() => void load(0)} /> : null}
       {spaceEditorOpen && space ? <ShowcaseSpaceEditor space={space} items={items} onClose={() => setSpaceEditorOpen(false)} onSaved={() => void loadSpace()} /> : null}
     </section>
   );

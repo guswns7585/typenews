@@ -1842,7 +1842,7 @@ export function TypingWorkspace() {
             /* 그림이 딸린 문장은 테두리가 한 번 반짝인다.
                key가 문장마다 바뀌어 이 요소가 다시 마운트되므로, 클래스만 붙여도
                CSS 애니메이션이 그때마다 처음부터 재생된다. */
-            className={sentenceImage ? "has-sentence-image" : undefined}
+            className={[sentenceImage ? "has-sentence-image" : "", sentence?.sourceName ? "has-attribution" : ""].filter(Boolean).join(" ") || undefined}
             style={{ fontSize: `${settings.fontSize}px`, lineHeight: 1.8, cursor: "text" }}
             onClick={focusInput}
           >
@@ -1941,6 +1941,11 @@ export function TypingWorkspace() {
             {!loadError && !isWordMode && !usesLineDial && sentence && (!sentence.title || isNewsTitleMode)
               ? characterSpans
               : null}
+            {!loadError && !isWordMode && !usesLineDial && sentence?.sourceName ? (
+              sentence.sourceUrl ? <a className="sentence-attribution" href={sentence.sourceUrl} target="_blank" rel="noreferrer" onClick={(event) => event.stopPropagation()}>
+                {t("출처", "Source")} · {sentence.sourceName}
+              </a> : <span className="sentence-attribution">{t("출처", "Source")} · {sentence.sourceName}</span>
+            ) : null}
             <span className="vscode-live-suffix" aria-hidden="true">&quot;;</span>
 
             {/* 글자들과 같은 좌표계에 두어야 offsetLeft/Top으로 자리를 잡을 수 있다.

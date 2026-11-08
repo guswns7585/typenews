@@ -1,11 +1,12 @@
 "use client";
 
-import { Bookmark, ExternalLink, Flag, Heart, LoaderCircle, Music2, Share2, X } from "lucide-react";
+import { Bookmark, Flag, Heart, LoaderCircle, Share2, X } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { useAuthProfile } from "@/components/auth/auth-button";
+import { ShowcaseAudioPlayer } from "@/components/showcase/showcase-audio-player";
 import { signedShowcaseUrl } from "@/features/showcase/media";
-import { SHOWCASE_BUILD_FIELDS, type ShowcaseItem, type ShowcaseViewItem } from "@/features/showcase/types";
+import { SHOWCASE_BUILD_FIELD_MAP, SHOWCASE_BUILD_SECTIONS, type ShowcaseItem, type ShowcaseViewItem } from "@/features/showcase/types";
 import { publicProfilePhotoUrl } from "@/features/profile/profile-photo";
 import { getSupabaseClient } from "@/lib/supabase/client";
 import { messageOf } from "@/lib/supabase/errors";
@@ -50,7 +51,7 @@ export function ShowcaseDetail({ itemId }: { itemId: string }) {
         const detail = messageOf(error, t("아카이브 항목을 불러오지 못했습니다", "Could not load the archive item"));
         setMessage(
           detail.includes("get_showcase_item") && detail.includes("schema cache")
-            ? t("아카이브 데이터베이스를 준비하는 중입니다", "The archive database is being prepared")
+            ? t("데이터베이스 준비 중", "Database setup in progress")
             : detail,
         );
       } finally { if (active) setLoading(false); }
@@ -62,7 +63,7 @@ export function ShowcaseDetail({ itemId }: { itemId: string }) {
     const supabase = getSupabaseClient();
     if (!supabase || !item) return;
     if (!signedIn) {
-      setMessage(t("로그인 후 사용할 수 있습니다", "Sign in to continue"));
+      setMessage(t("로그인 필요", "Sign-in required"));
       return;
     }
     const { data, error } = await supabase.rpc(kind === "like" ? "toggle_showcase_like" : "toggle_showcase_bookmark", { p_item_id: item.item_id });
@@ -94,8 +95,12 @@ export function ShowcaseDetail({ itemId }: { itemId: string }) {
     }
   }
 
-  if (loading) return <div className={styles.loading}><LoaderCircle className={styles.spinning} />{t("아카이브 항목을 여는 중입니다", "Opening archive item")}</div>;
+  if (loading) return <div className={styles.loading}><LoaderCircle className={styles.spinning} />{t("불러오는 중", "Loading")}</div>;
   if (!item) return <div className={styles.empty}><strong>{message || t("아카이브 항목이 없습니다", "Archive item unavailable")}</strong><Link href="/showcase">{t("아카이브로 돌아가기", "Back to archive")}</Link></div>;
+  const buildSections = SHOWCASE_BUILD_SECTIONS.map((section) => ({
+    ...section,
+    fields: section.fields.filter((key) => item.build_info[key]),
+  })).filter((section) => section.fields.length);
 
   return (
     <article className={styles.detail}>
@@ -104,7 +109,7 @@ export function ShowcaseDetail({ itemId }: { itemId: string }) {
         <div className={styles.detailMedia}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={item.imageUrl} alt={item.title} />
-          {item.audioUrl ? <audio controls preload="metadata" src={item.audioUrl} /> : <span className={styles.noAudio}><Music2 size={14} />{t("등록된 타건음이 없습니다", "No typing sound uploaded")}</span>}
+          {item.audioUrl ? <ShowcaseAudioPlayer src={item.audioUrl} label={t("타건음", "Typing sound")} durationHint={item.audio_duration_ms ? item.audio_duration_ms / 1000 : undefined} /> : <span className={styles.noAudio}>{t("타건음 없음", "No typing sound")}</span>}
         </div>
         <div className={styles.detailCopy}>
           <div className={styles.detailAuthor}>
@@ -117,22 +122,25 @@ export function ShowcaseDetail({ itemId }: { itemId: string }) {
               <Link href={`/showcase?profile=${item.profile_id}`}>{item.display_name}</Link>
           </div>
           <h1>{item.title}</h1>
-          {item.description ? <p className={styles.description}>{item.description}</p> : null}
-          <dl className={styles.buildList}>
-            {SHOWCASE_BUILD_FIELDS.map(([key, label, labelEn]) => item.build_info[key] ? (
-              <div key={key}><dt>{isEnglish ? labelEn : label}</dt><dd>{item.build_info[key]}</dd></div>
-            ) : null)}
-          </dl>
-          {item.keyxif_url ? <a className={styles.keyxifLink} href={item.keyxif_url} target="_blank" rel="noreferrer">KeyXIF <ExternalLink size={14} /></a> : null}
+          {item.description ? <section className={styles.buildNotes}><h2>{t("빌드 노트", "Build notes")}</h2><p className={styles.description}>{item.description}</p></section> : null}
           <div className={styles.detailActions}>
             <button type="button" disabled={!authReady} data-active={item.liked_by_me} onClick={() => void toggle("like")}><Heart size={17} fill={item.liked_by_me ? "currentColor" : "none"} />{item.like_count}</button>
             <button type="button" disabled={!authReady} data-active={item.bookmarked_by_me} onClick={() => void toggle("bookmark")}><Bookmark size={17} fill={item.bookmarked_by_me ? "currentColor" : "none"} />{item.bookmark_count}</button>
             <button type="button" onClick={() => void shareItem()}><Share2 size={16} />{t("공유", "Share")}</button>
-            <button type="button" disabled={!authReady} onClick={() => { if (!signedIn) setMessage(t("신고는 로그인 후 사용할 수 있습니다", "Sign in to report")); else setReportOpen(true); }}><Flag size={16} />{t("신고", "Report")}</button>
+            <button type="button" disabled={!authReady} onClick={() => { if (!signedIn) setMessage(t("로그인 필요", "Sign-in required")); else setReportOpen(true); }}><Flag size={16} />{t("신고", "Report")}</button>
           </div>
           {message ? <p className={styles.pageMessage}>{message}</p> : null}
         </div>
       </div>
+      {buildSections.length ? <section className={styles.detailBuildPanel}>
+        <h2>{t("빌드 정보", "Build information")}</h2>
+        <div className={styles.buildDocument}>{buildSections.map((section) => (
+          <section key={section.id}><h3>{isEnglish ? section.labelEn : section.label}</h3><dl className={styles.buildList}>{section.fields.map((key) => {
+            const field = SHOWCASE_BUILD_FIELD_MAP[key];
+            return <div key={key}><dt>{isEnglish ? field.labelEn : field.label}</dt><dd>{item.build_info[key]}</dd></div>;
+          })}</dl></section>
+        ))}</div>
+      </section> : null}
       {reportOpen ? <ShowcaseReportDialog itemId={item.item_id} onClose={() => setReportOpen(false)} onReported={() => { setReportOpen(false); setMessage(t("관리자에게 검토를 요청했습니다", "Review requested")); }} /> : null}
     </article>
   );
@@ -164,7 +172,7 @@ function ShowcaseReportDialog({ itemId, onClose, onReported }: { itemId: string;
         <header className={styles.editorHeader}><div><span>{t("REPORT", "REPORT")}</span><h2>{t("아카이브 신고", "Report archive item")}</h2></div><button type="button" className={styles.iconButton} disabled={busy} onClick={onClose} aria-label={t("닫기", "Close")}><X size={18} /></button></header>
         <div className={styles.reportFields}>
           <label><span>{t("신고 사유", "Reason")}</span><select value={reason} onChange={(event) => setReason(event.target.value)}><option value="inappropriate">{t("부적절한 콘텐츠", "Inappropriate content")}</option><option value="copyright">{t("저작권 침해", "Copyright")}</option><option value="spam">{t("도배·광고", "Spam or advertising")}</option><option value="privacy">{t("개인정보 노출", "Privacy")}</option><option value="other">{t("기타", "Other")}</option></select></label>
-          <label><span>{t("상세 내용 · 선택 사항", "Details · optional")}</span><textarea rows={5} maxLength={1000} value={details} onChange={(event) => setDetails(event.target.value)} placeholder={t("관리자가 확인할 내용을 적어 주세요.", "Tell the moderator what to review.")} /><small>{details.length} / 1000</small></label>
+          <label><span>{t("상세 내용 · 선택", "Details · optional")}</span><textarea rows={5} maxLength={1000} value={details} onChange={(event) => setDetails(event.target.value)} placeholder={t("확인이 필요한 내용", "What should be reviewed")} /><small>{details.length} / 1000</small></label>
         </div>
         {error ? <p className={styles.formMessage}>{error}</p> : null}
         <footer className={styles.editorActions}><button type="button" className={styles.secondaryButton} disabled={busy} onClick={onClose}>{t("취소", "Cancel")}</button><button type="submit" className={styles.primaryButton} disabled={busy}>{busy ? <LoaderCircle className={styles.spinning} size={16} /> : <Flag size={16} />}{t("신고 보내기", "Submit report")}</button></footer>

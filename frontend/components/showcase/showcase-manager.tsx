@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowDown, ArrowUp, Download, Eye, EyeOff, LoaderCircle, Pencil, Plus, Trash2, X } from "lucide-react";
+import { LoaderCircle, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createShowcaseCollage } from "@/features/showcase/collage";
 import { signedShowcaseUrl, SHOWCASE_BUCKET } from "@/features/showcase/media";
@@ -114,15 +114,15 @@ export function ShowcaseManager({ onClose, onAdd, onEdit, onChanged }: Props) {
   return (
     <dialog ref={dialogRef} className={`${styles.editor} ${styles.manager}`} onCancel={(event) => { event.preventDefault(); onClose(); }}>
       <section className={styles.managerInner}>
-        <header className={styles.editorHeader}><div><span>{t("ARCHIVE", "ARCHIVE")}</span><h2>{t("내 아카이브 관리", "Manage my archive")}</h2></div><button type="button" className={styles.iconButton} onClick={onClose} aria-label={t("닫기", "Close")}><X size={19} /></button></header>
+        <header className={styles.editorHeader}><div><h2>{t("내 아카이브 관리", "Manage my archive")}</h2></div><button type="button" className={styles.iconButton} onClick={onClose} aria-label={t("닫기", "Close")}><X size={19} /></button></header>
         <div className={styles.managerToolbar}>
           <strong>{items.length} / 10</strong>
-          <div><button type="button" className={styles.secondaryButton} disabled={collageBusy || !selected.size} onClick={() => void saveCollage()}>{collageBusy ? <LoaderCircle className={styles.spinning} size={16} /> : <Download size={16} />}{t(`콜라주 저장 (${selected.size})`, `Download collage (${selected.size})`)}</button><button type="button" className={styles.primaryButton} disabled={items.length >= 10} onClick={onAdd}><Plus size={16} />{t("키보드 추가", "Add keyboard")}</button></div>
+          <div><button type="button" className={styles.secondaryButton} disabled={collageBusy || !selected.size} onClick={() => void saveCollage()}>{collageBusy ? <LoaderCircle className={styles.spinning} size={16} /> : null}{t(`콜라주 저장 (${selected.size})`, `Download collage (${selected.size})`)}</button><button type="button" className={styles.primaryButton} disabled={items.length >= 10} onClick={onAdd}>{t("키보드 추가", "Add keyboard")}</button></div>
         </div>
         {items.length ? <section className={styles.collageOptions} aria-label={t("콜라주 설정", "Collage settings")}>
           <label><span>{t("배경", "Theme")}</span><select value={collageTheme} onChange={(event) => setCollageTheme(event.target.value as "light" | "dark")}><option value="light">{t("밝게", "Light")}</option><option value="dark">{t("어둡게", "Dark")}</option></select></label>
           <label><span>{t("사진 맞춤", "Image fit")}</span><select value={collageFit} onChange={(event) => setCollageFit(event.target.value as "cover" | "contain")}><option value="cover">{t("영역 채우기", "Fill")}</option><option value="contain">{t("사진 전체", "Show all")}</option></select></label>
-          <label className={styles.collageAuthor}><span>{t("작성자 이름 · 선택", "Author · optional")}</span><input maxLength={60} value={collageAuthor} onChange={(event) => setCollageAuthor(event.target.value)} placeholder={t("콜라주에 표시할 이름", "Name shown on collage")} /></label>
+          <label className={styles.collageAuthor}><span>{t("작성자 · 선택", "Author · optional")}</span><input maxLength={60} value={collageAuthor} onChange={(event) => setCollageAuthor(event.target.value)} placeholder={t("표시 이름", "Display name")} /></label>
           <label className={styles.collageCheck}><input type="checkbox" checked={collageCaptions} onChange={(event) => setCollageCaptions(event.target.checked)} />{t("키보드 이름 표시", "Show keyboard names")}</label>
         </section> : null}
         {message ? <p className={styles.formMessage}>{message}</p> : null}
@@ -137,12 +137,12 @@ export function ShowcaseManager({ onClose, onAdd, onEdit, onChanged }: Props) {
               <div className={styles.managerMeta}><strong>{item.title}</strong><span data-status={item.status}>{item.status === "published" ? t("공개", "Published") : item.status === "hidden" ? t("관리자 숨김", "Hidden by moderator") : t("비공개", "Private")}</span></div>
               <div className={styles.managerActions}>
                 <span className={styles.orderControls} data-visible={selected.has(item.id)}>
-                  <button type="button" disabled={!selected.has(item.id) || collageOrder.indexOf(item.id) <= 0} onClick={() => moveInCollage(item.id, -1)} aria-label={t("콜라주에서 앞으로", "Move earlier in collage")} title={t("콜라주에서 앞으로", "Move earlier in collage")}><ArrowUp size={14} /></button>
-                  <button type="button" disabled={!selected.has(item.id) || collageOrder.indexOf(item.id) >= collageOrder.length - 1} onClick={() => moveInCollage(item.id, 1)} aria-label={t("콜라주에서 뒤로", "Move later in collage")} title={t("콜라주에서 뒤로", "Move later in collage")}><ArrowDown size={14} /></button>
+                  <button type="button" disabled={!selected.has(item.id) || collageOrder.indexOf(item.id) <= 0} onClick={() => moveInCollage(item.id, -1)} aria-label={t("콜라주에서 앞으로", "Move earlier in collage")} title={t("콜라주에서 앞으로", "Move earlier in collage")}>↑</button>
+                  <button type="button" disabled={!selected.has(item.id) || collageOrder.indexOf(item.id) >= collageOrder.length - 1} onClick={() => moveInCollage(item.id, 1)} aria-label={t("콜라주에서 뒤로", "Move later in collage")} title={t("콜라주에서 뒤로", "Move later in collage")}>↓</button>
                 </span>
-                <button type="button" onClick={() => onEdit(item)}><Pencil size={15} />{t("수정", "Edit")}</button>
-                <button type="button" disabled={busyId === item.id || item.status === "hidden"} onClick={() => void togglePublished(item)}>{item.status === "published" ? <EyeOff size={15} /> : <Eye size={15} />}{item.status === "published" ? t("비공개", "Unpublish") : t("공개", "Publish")}</button>
-                <button type="button" className={styles.dangerButton} disabled={busyId === item.id} onClick={() => void remove(item)}><Trash2 size={15} />{t("삭제", "Delete")}</button>
+                <button type="button" onClick={() => onEdit(item)}>{t("수정", "Edit")}</button>
+                <button type="button" disabled={busyId === item.id || item.status === "hidden"} onClick={() => void togglePublished(item)}>{item.status === "published" ? t("비공개", "Unpublish") : t("공개", "Publish")}</button>
+                <button type="button" className={styles.dangerButton} disabled={busyId === item.id} onClick={() => void remove(item)}>{t("삭제", "Delete")}</button>
               </div>
             </article>
           ))}</div>

@@ -183,7 +183,10 @@ export function LegacyShell({ children, showTypingChrome = true, wide = false }:
                     : { type: "spring", stiffness: 470, damping: 38, mass: 0.72 }}
                 />
               ) : null}
-              <span className="global-nav-tab-label">{t("아카이브", "Archive")}</span>
+              <span className="global-nav-tab-label global-nav-tab-with-badge">
+                {t("아카이브", "Archive")}
+                <small className="global-nav-beta-badge">Beta</small>
+              </span>
             </MotionLink>
           </nav>
         </div>

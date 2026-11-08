@@ -7,6 +7,9 @@ import { CaptureSharing, startCapture, type RecordingResult } from "@/features/r
 import type { TrimRange } from "@/features/recording/editor";
 import { downloadRecording, MAX_SECONDS, recordingError } from "@/features/recording/media";
 import { trimRecording } from "@/features/recording/trim";
+import { extractRecordingAudio } from "@/features/recording/extract-audio";
+import { attachAudioToShowcaseDraft, readShowcaseDraft } from "@/features/showcase/audio-draft";
+import { SHOWCASE_MEDIA_LIMITS } from "@/features/showcase/media";
 import { RecordingPreview } from "./recording-preview";
 import styles from "./recording.module.css";
 import { useUiLanguage } from "@/lib/ui-language";
@@ -37,6 +40,7 @@ export function TypingRecorder({ targetRef, disabled = false, targetSelector = "
   const [error, setError] = useState("");
   const [sharingActive, setSharingActive] = useState(false);
   const [exportState, setExportState] = useState<ExportState | null>(null);
+  const [archiveDraftId, setArchiveDraftId] = useState("");
   const sharing = useRef<CaptureSharing | null>(null);
   const operation = useRef<AbortController | null>(null);
   const capture = useRef<{ stop: () => void } | null>(null);
@@ -49,6 +53,15 @@ export function TypingRecorder({ targetRef, disabled = false, targetSelector = "
     operation.current?.abort(); exportJob.current?.controller.abort(); sharing.current?.close();
     if (exportNoticeTimer.current) clearTimeout(exportNoticeTimer.current);
     capture.current = null;
+  }, []);
+  useEffect(() => {
+    const draftId = new URLSearchParams(window.location.search).get("showcaseAudioDraft");
+    if (!draftId) return;
+    queueMicrotask(() => {
+      setArchiveDraftId(draftId);
+      setMicrophone(true);
+      setSetup(true);
+    });
   }, []);
   useEffect(() => { if (setup) dialog.current?.showModal(); }, [setup]);
   useEffect(() => {
@@ -66,7 +79,7 @@ export function TypingRecorder({ targetRef, disabled = false, targetSelector = "
       sharing.current ??= new CaptureSharing(setSharingActive);
       const session = await startCapture({
         target: () => targetRef.current ?? document.querySelector<HTMLElement>(targetSelector),
-        microphone, signal: controller.signal, sharing: sharing.current,
+        microphone: archiveDraftId ? true : microphone, signal: controller.signal, sharing: sharing.current,
         onComplete: (result) => {
           if (controller.signal.aborted) return;
           capture.current = null; operation.current = null;
@@ -120,6 +133,43 @@ export function TypingRecorder({ targetRef, disabled = false, targetSelector = "
       if (exportJob.current?.controller === controller) exportJob.current = null;
     }
   }
+  function draftReturnUrl(returnUrl: string, draftId: string) {
+    const url = new URL(returnUrl, window.location.origin);
+    url.searchParams.set("showcaseAudioDraft", draftId);
+    return `${url.pathname}${url.search}${url.hash}`;
+  }
+  async function returnToArchive() {
+    if (!archiveDraftId) return;
+    try {
+      const draft = await readShowcaseDraft(archiveDraftId);
+      if (!draft) throw new Error(t("아카이브 편집 내용을 찾지 못했습니다", "Archive draft not found"));
+      window.location.assign(draftReturnUrl(draft.returnUrl, archiveDraftId));
+    } catch (cause) {
+      setSetup(false);
+      setError(recordingError(cause));
+    }
+  }
+  async function applyAudioToDraft(source: RecordingResult, range: TrimRange) {
+    if (!archiveDraftId || exportJob.current) return;
+    const controller = new AbortController();
+    exportJob.current = { controller, source, range };
+    setRecording(null);
+    setResumeRange(range);
+    setExportState({ phase: "working", progress: 0, message: t("선택 구간에서 타건음을 만드는 중", "Creating typing sound from selection") });
+    try {
+      const file = await extractRecordingAudio(source.blob, range.start, range.end, controller.signal, (progress) => {
+        if (exportJob.current?.controller === controller) setExportState({ phase: "working", progress, message: t("선택 구간에서 타건음을 만드는 중", "Creating typing sound from selection") });
+      });
+      if (controller.signal.aborted) return;
+      const returnUrl = await attachAudioToShowcaseDraft(archiveDraftId, file, Math.round((range.end - range.start) * 1000));
+      setExportState({ phase: "done", progress: 1, message: t("타건음을 준비했습니다", "Typing sound is ready") });
+      window.location.assign(draftReturnUrl(returnUrl, archiveDraftId));
+    } catch (cause) {
+      if (!controller.signal.aborted) setExportState({ phase: "error", progress: 0, message: recordingError(cause), source, range });
+    } finally {
+      if (exportJob.current?.controller === controller) exportJob.current = null;
+    }
+  }
   function cancelBackgroundExport() {
     const source = exportJob.current?.source;
     const range = exportJob.current?.range;
@@ -128,7 +178,7 @@ export function TypingRecorder({ targetRef, disabled = false, targetSelector = "
     if (source) { setResumeRange(range ?? null); setRecording(source); }
   }
   const exporting = exportState?.phase === "working";
-  const label = phase === "recording" ? t("녹화 중지", "Stop recording") : phase === "starting" ? t("녹화 준비 취소", "Cancel recording setup") : exporting ? t("영상 저장 중", "Exporting video") : sharingActive ? t("바로 다시 녹화", "Record again") : t("타이핑 녹화", "Record typing");
+  const label = phase === "recording" ? t("녹화 중지", "Stop recording") : phase === "starting" ? t("녹화 준비 취소", "Cancel recording setup") : exporting ? (archiveDraftId ? t("타건음 준비 중", "Preparing typing sound") : t("영상 저장 중", "Exporting video")) : sharingActive ? t("바로 다시 녹화", "Record again") : archiveDraftId ? t("아카이브 타건음 녹화", "Record archive typing sound") : t("타이핑 녹화", "Record typing");
   return <div className={styles.root} data-dock-interactive="true">
     <button type="button" className={`${styles.dockButton} ${phase === "recording" ? styles.active : ""}`}
       disabled={(disabled || exporting) && phase === "idle"} aria-label={label} aria-describedby={tooltip}
@@ -159,14 +209,14 @@ export function TypingRecorder({ targetRef, disabled = false, targetSelector = "
     </div>, document.body)}
     {setup && createPortal(<dialog ref={dialog} className={styles.dialog} aria-labelledby={title}
       data-dock-interactive="true" onCancel={(event) => { event.preventDefault(); setSetup(false); }}>
-      <header className={styles.header}><h2 id={title}>{t("타이핑 녹화", "Record typing")}</h2><button type="button" className={styles.icon} onClick={() => setSetup(false)} aria-label={t("녹화 설정 닫기", "Close recording setup")}><X size={20} aria-hidden="true" /></button></header>
-      <p>{t("공유 창에서 현재 TypeNews 탭을 선택하세요. 타이핑 영역만 녹화합니다. 최대 5분 또는 100 MB이며, 탭을 숨기거나 영역이 화면 밖으로 이동하면 종료됩니다.", "Select this TypeNews tab in the sharing dialog. Only the typing area is recorded, up to 5 minutes or 100 MB. Hiding the tab or moving the area outside the viewport stops recording.")}</p>
-      <label className={styles.checkbox}><input type="checkbox" checked={microphone} onChange={(event) => setMicrophone(event.target.checked)} /><Mic size={17} aria-hidden="true" /> {t("마이크 포함 (소음 억제 끔)", "Include microphone (noise suppression off)")}</label>
+      <header className={styles.header}><h2 id={title}>{archiveDraftId ? t("아카이브 타건음 녹음", "Record archive typing sound") : t("타이핑 녹화", "Record typing")}</h2><button type="button" className={styles.icon} onClick={() => archiveDraftId ? void returnToArchive() : setSetup(false)} aria-label={t("녹화 설정 닫기", "Close recording setup")}><X size={20} aria-hidden="true" /></button></header>
+      <p>{archiveDraftId ? t("평소처럼 타이핑을 녹화하세요. 녹화를 마치면 파형에서 최대 45초 구간을 고르고, 그 구간의 마이크 소리만 아카이브에 사용합니다.", "Record your typing as usual. When finished, choose up to 45 seconds on the waveform; only the microphone audio from that range is used in your archive.") : t("공유 창에서 현재 TypeNews 탭을 선택하세요. 타이핑 영역만 녹화합니다. 최대 5분 또는 100 MB이며, 탭을 숨기거나 영역이 화면 밖으로 이동하면 종료됩니다.", "Select this TypeNews tab in the sharing dialog. Only the typing area is recorded, up to 5 minutes or 100 MB. Hiding the tab or moving the area outside the viewport stops recording.")}</p>
+      <label className={styles.checkbox}><input type="checkbox" checked={archiveDraftId ? true : microphone} disabled={Boolean(archiveDraftId)} onChange={(event) => setMicrophone(event.target.checked)} /><Mic size={17} aria-hidden="true" /> {archiveDraftId ? t("마이크 포함 · 필수", "Microphone included · required") : t("마이크 포함 (소음 억제 끔)", "Include microphone (noise suppression off)")}</label>
       <p>{t("녹화와 편집은 브라우저 안에서 처리되며 업로드하지 않습니다. 데스크톱 Chrome / Edge가 필요합니다.", "Recording and editing stay in your browser. Nothing is uploaded. Desktop Chrome or Edge is required.")}</p>
       <p>{t("녹화를 마쳐도 화면 공유 연결은 유지됩니다. 다음 녹화는 버튼 한 번으로 시작하며, 대기 중에는 영상 저장과 마이크 사용이 중단됩니다. 독의 ‘공유 연결 중 · 끊기’로 연결을 종료할 수 있습니다.", "Screen sharing stays connected after recording so you can record again with one click. While idle, video is not saved and the microphone is off. Use ‘Sharing connected · Disconnect’ in the dock to end sharing.")}</p>
-      <div className={styles.actions}><button type="button" onClick={() => setSetup(false)}>{t("취소", "Cancel")}</button><button type="button" disabled={disabled} onClick={(event) => { event.currentTarget.blur(); void start().then(focusTypingInput); }}><Video size={17} aria-hidden="true" /> {t("탭 선택 및 녹화", "Select tab and record")}</button></div>
+      <div className={styles.actions}><button type="button" onClick={() => archiveDraftId ? void returnToArchive() : setSetup(false)}>{archiveDraftId ? t("아카이브로 돌아가기", "Return to archive") : t("취소", "Cancel")}</button><button type="button" disabled={disabled} onClick={(event) => { event.currentTarget.blur(); void start().then(focusTypingInput); }}><Video size={17} aria-hidden="true" /> {t("탭 선택 및 녹화", "Select tab and record")}</button></div>
     </dialog>, document.body)}
-    {recording && <RecordingPreview recording={recording} initialRange={resumeRange ?? undefined} onClose={() => { setRecording(null); setResumeRange(null); }} onExport={(range) => void exportInBackground(recording, range)} />}
+    {recording && <RecordingPreview recording={recording} initialRange={resumeRange ?? undefined} onClose={() => { setRecording(null); setResumeRange(null); }} onExport={(range) => void exportInBackground(recording, range)} onUseAudio={archiveDraftId ? (range) => void applyAudioToDraft(recording, range) : undefined} maxSelectionDuration={archiveDraftId ? SHOWCASE_MEDIA_LIMITS.audioDurationSeconds : undefined} />}
   </div>;
 }
 

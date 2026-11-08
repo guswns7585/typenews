@@ -1,20 +1,44 @@
 export const SHOWCASE_BUILD_FIELDS = [
+  ["buildDate", "빌드일", "Build date"],
   ["case", "하우징", "Case"],
   ["pcb", "기판", "PCB"],
   ["plate", "보강판", "Plate"],
   ["switches", "스위치", "Switches"],
   ["keycaps", "키캡", "Keycaps"],
   ["stabilizers", "스테빌라이저", "Stabilizers"],
+  ["switchMods", "스위치 작업", "Switch tuning"],
+  ["stabilizerMods", "스테빌 튜닝", "Stabilizer tuning"],
   ["mounting", "마운트", "Mounting"],
   ["foam", "흡음재", "Foam"],
   ["layout", "배열", "Layout"],
   ["weight", "무게추", "Weight"],
+  ["firmware", "펌웨어·키맵", "Firmware / keymap"],
+  ["mods", "기타 튜닝", "Other modifications"],
+  ["typingFeel", "타건감", "Typing feel"],
+  ["soundProfile", "소리 성향", "Sound profile"],
   ["cable", "케이블", "Cable"],
   ["other", "기타", "Other"],
 ] as const;
 
 export type ShowcaseBuildKey = (typeof SHOWCASE_BUILD_FIELDS)[number][0];
 export type ShowcaseBuildInfo = Partial<Record<ShowcaseBuildKey, string>>;
+
+export const SHOWCASE_BUILD_SECTIONS: ReadonlyArray<{
+  id: string;
+  label: string;
+  labelEn: string;
+  fields: readonly ShowcaseBuildKey[];
+}> = [
+  { id: "record", label: "제작 정보", labelEn: "Build details", fields: ["buildDate"] },
+  { id: "core", label: "주요 부품", labelEn: "Main components", fields: ["case", "pcb", "plate", "mounting", "layout", "weight"] },
+  { id: "input", label: "스위치·키캡", labelEn: "Switches & keycaps", fields: ["switches", "switchMods", "keycaps", "stabilizers", "stabilizerMods"] },
+  { id: "tuning", label: "세팅·튜닝", labelEn: "Setup & tuning", fields: ["foam", "mods", "firmware", "cable"] },
+  { id: "impression", label: "타건감·소리", labelEn: "Feel & sound", fields: ["typingFeel", "soundProfile", "other"] },
+];
+
+export const SHOWCASE_BUILD_FIELD_MAP = Object.fromEntries(
+  SHOWCASE_BUILD_FIELDS.map(([key, label, labelEn]) => [key, { label, labelEn }]),
+) as Record<ShowcaseBuildKey, { label: string; labelEn: string }>;
 
 export type ShowcaseItem = {
   item_id: string;
