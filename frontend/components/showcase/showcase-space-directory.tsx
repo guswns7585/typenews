@@ -68,7 +68,7 @@ export function ShowcaseSpaceDirectory() {
       setTotal(Number(rows[0]?.total_count ?? offset + rows.length));
     } catch (error) {
       const detail = messageOf(error, t("사용자 공간을 불러오지 못했습니다", "Could not load personal spaces"));
-      setMessage(detail.includes("get_showcase_spaces") && detail.includes("schema cache")
+      setMessage((detail.includes("get_showcase_spaces") && detail.includes("schema cache")) || detail.includes("permission denied for function current_profile_id")
         ? t("데이터베이스 준비 중", "Database setup in progress")
         : detail);
       if (!offset) setSpaces([]);

@@ -50,7 +50,7 @@ export function ShowcaseDetail({ itemId }: { itemId: string }) {
         if (!active) return;
         const detail = messageOf(error, t("아카이브 항목을 불러오지 못했습니다", "Could not load the archive item"));
         setMessage(
-          detail.includes("get_showcase_item") && detail.includes("schema cache")
+          (detail.includes("get_showcase_item") && detail.includes("schema cache")) || detail.includes("permission denied for function current_profile_id")
             ? t("데이터베이스 준비 중", "Database setup in progress")
             : detail,
         );

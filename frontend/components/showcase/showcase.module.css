@@ -210,6 +210,30 @@
 .reportFields select, .reportFields textarea { width: 100%; box-sizing: border-box; padding: 10px 11px; border: 1px solid rgba(92,67,68,.22); border-radius: var(--radius-sm); outline: 0; color: var(--color-ink); background: rgba(255,255,255,.4); font: inherit; resize: vertical; }
 .reportFields small { justify-self: end; color: var(--color-ink-muted-48); font-weight: 500; }
 
+/* 브라우저 기본 select 모양 대신 아카이브 입력 요소와 같은 표면을 쓴다. */
+.page select, .detail select, .editor select {
+  min-height: 36px;
+  box-sizing: border-box;
+  padding-right: 34px;
+  border: 1px solid rgba(92,67,68,.22);
+  border-radius: var(--radius-sm);
+  outline: 0;
+  color: var(--color-ink-muted-80);
+  background-color: var(--typenews-button);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='m1 1.5 5 5 5-5' fill='none' stroke='%235c4440' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 11px center;
+  background-size: 10px auto;
+  box-shadow: var(--typenews-button-shadow), var(--typenews-inset);
+  cursor: pointer;
+  font: inherit;
+  appearance: none;
+  -webkit-appearance: none;
+}
+.page select:hover, .detail select:hover, .editor select:hover { background-color: rgba(255,255,255,.38); }
+.page select:focus-visible, .detail select:focus-visible, .editor select:focus-visible { border-color: color-mix(in srgb, var(--color-ink) 42%, transparent); box-shadow: 0 0 0 3px rgba(255,255,255,.22), var(--typenews-inset); }
+.page select option, .detail select option, .editor select option { color: #3f3336; background: #f3e8e6; }
+
 @media (max-width: 900px) {
   .spaceDirectory { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
