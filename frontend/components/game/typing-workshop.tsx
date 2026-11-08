@@ -4,7 +4,7 @@ import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAuthProfile } from "@/components/auth/auth-button";
-import type { GameDrawResult, GameItem, GameRarity, TypingGameState } from "@/features/game/types";
+import type { GameDrawResult, GameItem, TypingGameState } from "@/features/game/types";
 import { RARITY_LABELS } from "@/features/game/types";
 import { getSupabaseClient } from "@/lib/supabase/client";
 import { messageOf } from "@/lib/supabase/errors";
@@ -12,6 +12,24 @@ import { useUiLanguage } from "@/lib/ui-language";
 import styles from "./typing-workshop.module.css";
 
 const DRAW_COST = 600;
+
+const PREVIEW_ITEMS: GameItem[] = [
+  { id: "desk_snail", nameKo: "원고 달팽이", nameEn: "Draft Snail", descriptionKo: "느리지만 밤새 원고를 옮긴다.", descriptionEn: "Slowly carries drafts through the night.", category: "companion", rarity: "common", quantity: 4, activeBonusBps: 0, passiveInkPerHour: 5 },
+  { id: "proofreader_cat", nameKo: "교정 보는 고양이", nameEn: "Proofreader Cat", descriptionKo: "오탈자를 발견하면 꼬리를 친다.", descriptionEn: "Flicks its tail whenever it spots a typo.", category: "companion", rarity: "rare", quantity: 2, activeBonusBps: 0, passiveInkPerHour: 12 },
+  { id: "clockwork_typewriter", nameKo: "태엽 타자기", nameEn: "Clockwork Typewriter", descriptionKo: "키가 혼자 움직이며 잉크를 만든다.", descriptionEn: "Its keys move on their own to make ink.", category: "tool", rarity: "epic", quantity: 1, activeBonusBps: 350, passiveInkPerHour: 20 },
+  { id: "blue_editor_banner", nameKo: "푸른 편집실 명패", nameEn: "Blue Editor Banner", descriptionKo: "랭킹 이름표에 쓰는 푸른 명패.", descriptionEn: "A blue ranking nameplate.", category: "banner", rarity: "rare", quantity: 1, activeBonusBps: 0, passiveInkPerHour: 0, cosmeticData: { style: "blueprint" } },
+  { id: "archive_nocturne", nameKo: "아카이브 녹턴", nameEn: "Archive Nocturne", descriptionKo: "개인 아카이브에 적용하는 짙은 밤색 테마.", descriptionEn: "A deep night theme for a personal archive.", category: "archive_theme", rarity: "epic", quantity: 1, activeBonusBps: 0, passiveInkPerHour: 0, cosmeticData: { style: "nocturne" } },
+];
+
+const PREVIEW_STATE: TypingGameState = {
+  wallet: { ink: 12480, lifetimeInk: 46320, pityCount: 7, passivePerHour: 64, claimableInk: 936, passiveClaimedAt: new Date(0).toISOString() },
+  inventory: PREVIEW_ITEMS,
+  catalog: [...PREVIEW_ITEMS,
+    { id: "golden_press", nameKo: "황금 윤전기", nameEn: "Golden Press", descriptionKo: "아직 발견하지 못했습니다.", descriptionEn: "Not discovered yet.", category: "tool", rarity: "legendary", activeBonusBps: 700, passiveInkPerHour: 60 },
+    { id: "golden_edition", nameKo: "황금판 이름표", nameEn: "Golden Edition", descriptionKo: "아직 발견하지 못했습니다.", descriptionEn: "Not discovered yet.", category: "banner", rarity: "legendary", activeBonusBps: 0, passiveInkPerHour: 0 },
+  ],
+  equipment: { rankingBannerId: "blue_editor_banner", archiveThemeId: "archive_nocturne" },
+};
 
 const ITEM_SIGNS: Record<string, string> = {
   pencil_stub: "✎",
@@ -33,7 +51,12 @@ function isSetupError(message: string) {
 }
 
 function ItemSign({ item, hidden = false }: { item: Pick<GameItem, "id" | "rarity">; hidden?: boolean }) {
-  return <span className={styles.itemSign} data-rarity={item.rarity} data-hidden={hidden}>{hidden ? "?" : ITEM_SIGNS[item.id] ?? "•"}</span>;
+  const hasArtwork = item.id !== "archive_pressroom";
+  return <span className={styles.itemSign} data-rarity={item.rarity} data-hidden={hidden}>{hasArtwork ? (
+    // Generated project artwork, split from a consistent inventory sprite sheet.
+    // eslint-disable-next-line @next/next/no-img-element
+    <img src={`/game/items/${item.id}.webp`} alt="" />
+  ) : hidden ? "?" : ITEM_SIGNS[item.id] ?? "•"}</span>;
 }
 
 export function TypingWorkshop() {
@@ -46,9 +69,10 @@ export function TypingWorkshop() {
   const [message, setMessage] = useState("");
   const [results, setResults] = useState<GameDrawResult[]>([]);
   const [collectionFilter, setCollectionFilter] = useState<"all" | "owned">("owned");
+  const [preview, setPreview] = useState(false);
 
   const load = useCallback(async () => {
-    if (!signedIn) { setLoading(false); return; }
+    if (!signedIn || preview) { setLoading(false); return; }
     const supabase = getSupabaseClient();
     if (!supabase) { setLoading(false); return; }
     setLoading(true);
@@ -61,15 +85,28 @@ export function TypingWorkshop() {
     }
     setState(data as TypingGameState);
     setMessage("");
-  }, [signedIn, t]);
+  }, [preview, signedIn, t]);
 
   useEffect(() => { void Promise.resolve().then(load); }, [load]);
+
+  useEffect(() => {
+    if (process.env.NODE_ENV !== "development" || !new URLSearchParams(window.location.search).has("preview")) return;
+    void Promise.resolve().then(() => {
+      setPreview(true);
+      setState(PREVIEW_STATE);
+      setLoading(false);
+    });
+  }, []);
 
   const ownedMap = useMemo(() => new Map((state?.inventory ?? []).map((item) => [item.id, item])), [state]);
   const activeBonus = Math.min(50, (state?.inventory ?? []).reduce((sum, item) => sum + item.activeBonusBps * (item.quantity ?? 1), 0) / 100);
   const shownItems = collectionFilter === "owned" ? state?.inventory ?? [] : state?.catalog ?? [];
 
   async function claim() {
+    if (preview && state) {
+      setState({ ...state, wallet: { ...state.wallet, ink: state.wallet.ink + state.wallet.claimableInk, claimableInk: 0 } });
+      return;
+    }
     const supabase = getSupabaseClient();
     if (!supabase || !state || state.wallet.claimableInk < 1) return;
     setBusy("claim");
@@ -81,6 +118,12 @@ export function TypingWorkshop() {
   }
 
   async function draw(count: 1 | 10) {
+    if (preview && state) {
+      const samples: GameDrawResult[] = Array.from({ length: count }, (_, index) => ({ draw_index: index + 1, item_id: index % 4 === 3 ? "clockwork_typewriter" : "desk_snail", name_ko: index % 4 === 3 ? "태엽 타자기" : "원고 달팽이", name_en: index % 4 === 3 ? "Clockwork Typewriter" : "Draft Snail", rarity: index % 4 === 3 ? "epic" : "common", quantity_owned: index % 4 === 3 ? 2 : 5 + index }));
+      setState({ ...state, wallet: { ...state.wallet, ink: state.wallet.ink - DRAW_COST * count } });
+      setResults(samples);
+      return;
+    }
     const supabase = getSupabaseClient();
     if (!supabase || !state) return;
     if (state.wallet.ink < DRAW_COST * count) {
@@ -98,6 +141,10 @@ export function TypingWorkshop() {
 
   async function equip(item: GameItem) {
     if (item.category !== "banner" && item.category !== "archive_theme") return;
+    if (preview && state) {
+      setState({ ...state, equipment: item.category === "banner" ? { ...state.equipment, rankingBannerId: state.equipment.rankingBannerId === item.id ? null : item.id } : { ...state.equipment, archiveThemeId: state.equipment.archiveThemeId === item.id ? null : item.id } });
+      return;
+    }
     const supabase = getSupabaseClient();
     if (!supabase) return;
     const slot = item.category === "banner" ? "ranking_banner" : "archive_theme";
@@ -115,7 +162,7 @@ export function TypingWorkshop() {
 
   if (!authReady || loading && signedIn && !state) return <div className={styles.loading}>{t("공방 문을 여는 중", "Opening the workshop")}</div>;
 
-  if (!signedIn) return (
+  if (!signedIn && !preview) return (
     <section className={styles.page}>
       <div className={styles.introOnly}>
         <span className={styles.kicker}>{t("실험 기능", "Experimental")}</span>
@@ -127,11 +174,6 @@ export function TypingWorkshop() {
   );
 
   if (!state) return <section className={styles.page}><div className={styles.errorBox}><strong>{message || t("공방을 열 수 없습니다", "Workshop unavailable")}</strong><button type="button" onClick={() => void load()}>{t("다시 시도", "Retry")}</button></div></section>;
-
-  const featured = state.inventory.slice().sort((a, b) => {
-    const rank: Record<GameRarity, number> = { common: 0, rare: 1, epic: 2, legendary: 3 };
-    return rank[b.rarity] - rank[a.rarity];
-  }).slice(0, 5);
 
   return (
     <section className={styles.page}>
@@ -155,16 +197,10 @@ export function TypingWorkshop() {
         <section className={styles.workbench}>
           <header><div><span>{t("현재 공방", "Current workshop")}</span><strong>{t("편집실 1호", "Newsroom No. 1")}</strong></div><span>{t("최대 8시간 보관", "Stores up to 8 hours")}</span></header>
           <div className={styles.scene} aria-label={t("수집한 물건이 놓인 활자 공방", "Workshop containing collected items")}>
-            <span className={styles.window}><i /><i /><i /></span>
-            <span className={styles.desk} />
-            <span className={styles.press}><i /><i /><i /></span>
-            <span className={styles.shelf} />
-            <div className={styles.sceneItems}>{featured.map((item, index) => (
-              <motion.span key={item.id} className={styles.sceneItem} data-slot={index} data-rarity={item.rarity}
-                initial={reduceMotion ? false : { opacity: 0, y: 8, scale: 0.9 }} animate={{ opacity: 1, y: 0, scale: 1 }}>
-                {ITEM_SIGNS[item.id] ?? "•"}
-              </motion.span>
-            ))}</div>
+            {/* Generated project artwork, optimized to WebP before being committed. */}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img className={styles.workshopArt} src="/game/workshop-scene-v1.webp" alt="" />
+            <div className={styles.sceneHud}><span>{t("발견한 물건", "Discovered")}</span><strong>{state.inventory.length} / {state.catalog.length}</strong></div>
           </div>
           <div className={styles.passiveBar}>
             <div><span>{t("쌓인 잉크", "Stored ink")}</span><strong>{state.wallet.claimableInk.toLocaleString()}</strong></div>
@@ -174,7 +210,8 @@ export function TypingWorkshop() {
 
         <section className={styles.drawPanel}>
           <header><span>{t("공방 보급함", "Workshop supply")}</span><strong>{t("오래된 물건 상자", "Old newsroom box")}</strong></header>
-          <div className={styles.box} aria-hidden="true"><span>TYPE</span><i /><i /></div>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img className={styles.chestArt} src="/game/supply-chest-v1.webp" alt="" aria-hidden="true" />
           <p>{t("도구, 동료, 이름표와 아카이브 장식이 나옵니다.", "Contains tools, companions, nameplates, and archive decorations.")}</p>
           <div className={styles.pity}><span>{t("희귀 이상 확정까지", "Rare guarantee")}</span><strong>{20 - state.wallet.pityCount}{t("회", " draws")}</strong></div>
           <div className={styles.drawActions}>
