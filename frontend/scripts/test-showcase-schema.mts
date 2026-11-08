@@ -26,6 +26,10 @@ const anonymousMediaFixMigration = await readFile(
   "utf8",
 );
 const anonymousMediaFixSql = anonymousMediaFixMigration.replace(/^\s*--.*$/gm, "");
+const adminReportRpcMigration = await readFile(
+  new URL("../../supabase/migrations/0080_restore_showcase_admin_report_rpcs.sql", import.meta.url),
+  "utf8",
+);
 
 assert.match(migration, /pg_advisory_xact_lock/, "quota creation must be serialized");
 assert.match(migration, />= 10/, "account limit must be enforced by Postgres");
@@ -61,5 +65,9 @@ assert.match(anonymousMediaFixMigration, /policyname like 'keyboard_showcase%'/,
 assert.match(anonymousMediaFixMigration, /create or replace function public\.can_read_showcase_media/i, "media reads need an anon-safe authorization helper");
 assert.doesNotMatch(anonymousMediaFixSql, /current_profile_id\(\)/, "anonymous media reads must not execute current_profile_id");
 assert.match(anonymousMediaFixMigration, /grant execute on function public\.can_read_showcase_media\(text\) to anon, authenticated/i, "the safe media helper must be callable by archive readers");
+assert.match(adminReportRpcMigration, /create function public\.get_admin_showcase_reports/i, "missing admin report queues must be restored");
+assert.match(adminReportRpcMigration, /create function public\.admin_review_showcase_report/i, "missing report review actions must be restored");
+assert.match(adminReportRpcMigration, /grant execute on function public\.get_admin_showcase_reports\(boolean, integer\) to authenticated/i, "admins must be able to load report queues");
+assert.match(adminReportRpcMigration, /notify pgrst, 'reload schema'/i, "PostgREST must reload restored moderation RPCs");
 
 console.log("Showcase quota, publication, storage and write-boundary guards passed.");
