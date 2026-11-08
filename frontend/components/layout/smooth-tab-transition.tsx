@@ -25,7 +25,8 @@ const tabVariants = {
 export function SmoothTabTransition({ children }: SmoothTabTransitionProps) {
   const pathname = usePathname();
   const reduceMotion = useReducedMotion();
-  const direction = pathname === "/event" ? 1 : -1;
+  const order = pathname.startsWith("/workshop") ? 3 : pathname.startsWith("/showcase") ? 2 : pathname === "/event" ? 1 : 0;
+  const direction = order > 0 ? 1 : -1;
 
   return (
     <AnimatePresence initial={false} mode="popLayout" custom={direction}>

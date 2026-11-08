@@ -19,7 +19,7 @@ create table if not exists public.typing_game_items (
 
 create table if not exists public.typing_game_wallets (
   profile_id uuid primary key references public.profiles(id) on delete cascade,
-  ink bigint not null default 0 check (ink >= 0),
+  ink bigint not null default 600 check (ink >= 0),
   lifetime_ink bigint not null default 0 check (lifetime_ink >= 0),
   ink_dust integer not null default 0 check (ink_dust between 0 and 999),
   pity_count integer not null default 0 check (pity_count between 0 and 19),
@@ -46,6 +46,13 @@ create table if not exists public.typing_game_draws (
   created_at timestamptz not null default now()
 );
 
+create table if not exists public.typing_game_equipment (
+  profile_id uuid primary key references public.profiles(id) on delete cascade,
+  ranking_banner_id text references public.typing_game_items(id) on delete set null,
+  archive_theme_id text references public.typing_game_items(id) on delete set null,
+  updated_at timestamptz not null default now()
+);
+
 create index if not exists typing_game_draws_profile_created_idx
   on public.typing_game_draws(profile_id, created_at desc);
 
@@ -53,6 +60,7 @@ alter table public.typing_game_items enable row level security;
 alter table public.typing_game_wallets enable row level security;
 alter table public.typing_game_inventory enable row level security;
 alter table public.typing_game_draws enable row level security;
+alter table public.typing_game_equipment enable row level security;
 
 drop policy if exists "typing_game_items_read" on public.typing_game_items;
 create policy "typing_game_items_read"
@@ -78,11 +86,19 @@ on public.typing_game_draws for select
 to authenticated
 using (profile_id = public.current_profile_id());
 
+drop policy if exists "typing_game_equipment_read" on public.typing_game_equipment;
+create policy "typing_game_equipment_read"
+on public.typing_game_equipment for select
+to anon, authenticated
+using (true);
+
 revoke all on public.typing_game_items, public.typing_game_wallets,
-  public.typing_game_inventory, public.typing_game_draws from public, anon, authenticated;
+  public.typing_game_inventory, public.typing_game_draws,
+  public.typing_game_equipment from public, anon, authenticated;
 grant select on public.typing_game_items to anon, authenticated;
 grant select on public.typing_game_wallets, public.typing_game_inventory,
   public.typing_game_draws to authenticated;
+grant select on public.typing_game_equipment to anon, authenticated;
 
 insert into public.typing_game_items (
   id, name_ko, name_en, description_ko, description_en, category, rarity,
@@ -97,10 +113,15 @@ values
   ('proofreader_cat', '교정 보는 고양이', 'Proofreader Cat', '오탈자를 발견하면 꼬리를 친다.', 'Flicks its tail whenever it spots a typo.', 'companion', 'rare', 620, 0, 12, 60),
   ('night_lamp', '심야 편집등', 'Night Editor Lamp', '늦은 시간에도 공방을 밝힌다.', 'Keeps the workshop lit after midnight.', 'tool', 'rare', 520, 100, 8, 70),
   ('blue_editor_banner', '푸른 편집실 명패', 'Blue Editor Banner', '이벤트 이름표에 쓸 수 있는 푸른 명패.', 'A blue nameplate for the event board.', 'banner', 'rare', 380, 0, 0, 80),
+  ('copper_nameplate', '구리 식자공 명패', 'Copper Typesetter Plate', '따뜻한 구리빛 랭킹 이름표.', 'A warm copper ranking nameplate.', 'banner', 'rare', 330, 0, 0, 82),
+  ('archive_blueprint', '청사진 보관실', 'Blueprint Archive', '개인 아카이브를 청사진처럼 정리한다.', 'Turns a personal archive into a blueprint room.', 'archive_theme', 'rare', 280, 0, 0, 84),
   ('clockwork_typewriter', '태엽 타자기', 'Clockwork Typewriter', '키가 혼자 움직이며 잉크를 만든다.', 'Its keys move on their own to make ink.', 'tool', 'epic', 190, 350, 20, 90),
   ('paper_bird', '원고지 새', 'Manuscript Bird', '완성된 문장을 물고 공방을 돈다.', 'Circles the workshop with a finished line.', 'companion', 'epic', 150, 150, 24, 100),
   ('archive_nocturne', '아카이브 녹턴', 'Archive Nocturne', '개인 아카이브에 적용할 수 있는 짙은 밤색 테마.', 'A deep night theme for a personal archive.', 'archive_theme', 'epic', 110, 0, 0, 110),
-  ('golden_press', '황금 윤전기', 'Golden Press', '한밤중에도 쉬지 않고 돌아가는 작은 윤전기.', 'A tiny press that keeps turning all night.', 'tool', 'legendary', 25, 700, 60, 120)
+  ('midnight_headline', '자정 속보 이름표', 'Midnight Headline', '먹빛과 푸른 선으로 만든 랭킹 이름표.', 'An ink-black ranking nameplate with blue rules.', 'banner', 'epic', 95, 0, 0, 115),
+  ('golden_press', '황금 윤전기', 'Golden Press', '한밤중에도 쉬지 않고 돌아가는 작은 윤전기.', 'A tiny press that keeps turning all night.', 'tool', 'legendary', 25, 700, 60, 120),
+  ('golden_edition', '황금판 이름표', 'Golden Edition', '희귀한 황금판 랭킹 이름표.', 'A rare gold-edition ranking nameplate.', 'banner', 'legendary', 18, 0, 0, 125),
+  ('archive_pressroom', '황금 윤전실', 'Golden Pressroom', '개인 아카이브를 오래된 윤전실처럼 꾸민다.', 'Styles a personal archive like an old pressroom.', 'archive_theme', 'legendary', 15, 0, 0, 130)
 on conflict (id) do update set
   name_ko = excluded.name_ko,
   name_en = excluded.name_en,
@@ -112,6 +133,14 @@ on conflict (id) do update set
   active_bonus_bps = excluded.active_bonus_bps,
   passive_ink_per_hour = excluded.passive_ink_per_hour,
   sort_order = excluded.sort_order;
+
+update public.typing_game_items set cosmetic_data = '{"style":"blueprint"}'::jsonb where id = 'blue_editor_banner';
+update public.typing_game_items set cosmetic_data = '{"style":"copper"}'::jsonb where id = 'copper_nameplate';
+update public.typing_game_items set cosmetic_data = '{"style":"midnight"}'::jsonb where id = 'midnight_headline';
+update public.typing_game_items set cosmetic_data = '{"style":"gold"}'::jsonb where id = 'golden_edition';
+update public.typing_game_items set cosmetic_data = '{"style":"blueprint"}'::jsonb where id = 'archive_blueprint';
+update public.typing_game_items set cosmetic_data = '{"style":"nocturne"}'::jsonb where id = 'archive_nocturne';
+update public.typing_game_items set cosmetic_data = '{"style":"pressroom"}'::jsonb where id = 'archive_pressroom';
 
 create or replace function public.award_typing_game_ink()
 returns trigger
@@ -216,6 +245,7 @@ begin
         'quantity', inv.quantity,
         'activeBonusBps', item.active_bonus_bps,
         'passiveInkPerHour', item.passive_ink_per_hour
+        , 'cosmeticData', item.cosmetic_data
       ) order by item.sort_order)
       from public.typing_game_inventory inv
       join public.typing_game_items item on item.id = inv.item_id
@@ -232,10 +262,19 @@ begin
         'rarity', rarity,
         'activeBonusBps', active_bonus_bps,
         'passiveInkPerHour', passive_ink_per_hour
+        , 'cosmeticData', cosmetic_data
       ) order by sort_order)
       from public.typing_game_items
       where enabled
-    ), '[]'::jsonb)
+    ), '[]'::jsonb),
+    'equipment', coalesce((
+      select jsonb_build_object(
+        'rankingBannerId', ranking_banner_id,
+        'archiveThemeId', archive_theme_id
+      )
+      from public.typing_game_equipment
+      where profile_id = v_profile_id
+    ), jsonb_build_object('rankingBannerId', null, 'archiveThemeId', null))
   );
 end;
 $$;
@@ -311,7 +350,7 @@ declare
   v_index integer;
 begin
   if v_profile_id is null then raise exception 'Not authenticated'; end if;
-  if p_count not in (1, 10) then raise exception 'Draw count must be 1 or 10'; end if;
+  if p_count is null or p_count not in (1, 10) then raise exception 'Draw count must be 1 or 10'; end if;
 
   insert into public.typing_game_wallets (profile_id)
   values (v_profile_id)
@@ -382,13 +421,84 @@ begin
 end;
 $$;
 
+create or replace function public.equip_my_typing_game_cosmetic(
+  p_slot text,
+  p_item_id text default null
+)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_profile_id uuid := public.current_profile_id();
+  v_expected_category text;
+begin
+  if v_profile_id is null then raise exception 'Not authenticated'; end if;
+  if p_slot not in ('ranking_banner', 'archive_theme') then raise exception 'Invalid cosmetic slot'; end if;
+  v_expected_category := case p_slot when 'ranking_banner' then 'banner' else 'archive_theme' end;
+
+  if p_item_id is not null and not exists (
+    select 1
+    from public.typing_game_inventory inv
+    join public.typing_game_items item on item.id = inv.item_id and item.enabled
+    where inv.profile_id = v_profile_id
+      and inv.item_id = p_item_id
+      and item.category = v_expected_category
+  ) then raise exception 'Cosmetic is not owned'; end if;
+
+  insert into public.typing_game_equipment (profile_id, ranking_banner_id, archive_theme_id)
+  values (
+    v_profile_id,
+    case when p_slot = 'ranking_banner' then p_item_id else null end,
+    case when p_slot = 'archive_theme' then p_item_id else null end
+  )
+  on conflict (profile_id) do update
+  set ranking_banner_id = case when p_slot = 'ranking_banner' then p_item_id else public.typing_game_equipment.ranking_banner_id end,
+      archive_theme_id = case when p_slot = 'archive_theme' then p_item_id else public.typing_game_equipment.archive_theme_id end,
+      updated_at = now();
+end;
+$$;
+
+create or replace function public.get_typing_game_cosmetics(p_profile_ids uuid[])
+returns table (
+  profile_id uuid,
+  ranking_banner_id text,
+  ranking_banner_style text,
+  archive_theme_id text,
+  archive_theme_style text
+)
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select
+    p.id,
+    banner.id,
+    banner.cosmetic_data ->> 'style',
+    archive_theme.id,
+    archive_theme.cosmetic_data ->> 'style'
+  from public.profiles p
+  left join public.typing_game_equipment equipment on equipment.profile_id = p.id
+  left join public.typing_game_items banner
+    on banner.id = equipment.ranking_banner_id and banner.category = 'banner' and banner.enabled
+  left join public.typing_game_items archive_theme
+    on archive_theme.id = equipment.archive_theme_id and archive_theme.category = 'archive_theme' and archive_theme.enabled
+  where p.id = any(coalesce(p_profile_ids, '{}'::uuid[]))
+$$;
+
 revoke all on function public.award_typing_game_ink() from public, anon, authenticated;
 revoke all on function public.get_my_typing_game_state() from public, anon;
 revoke all on function public.claim_typing_game_passive_ink() from public, anon;
 revoke all on function public.draw_typing_game_items(integer) from public, anon;
+revoke all on function public.equip_my_typing_game_cosmetic(text, text) from public, anon;
+revoke all on function public.get_typing_game_cosmetics(uuid[]) from public;
 grant execute on function public.get_my_typing_game_state() to authenticated;
 grant execute on function public.claim_typing_game_passive_ink() to authenticated;
 grant execute on function public.draw_typing_game_items(integer) to authenticated;
+grant execute on function public.equip_my_typing_game_cosmetic(text, text) to authenticated;
+grant execute on function public.get_typing_game_cosmetics(uuid[]) to anon, authenticated;
 
 notify pgrst, 'reload schema';
 

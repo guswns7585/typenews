@@ -2108,6 +2108,40 @@ body.bg-custom-gradient {
   text-transform: uppercase;
 }
 
+/* 공방에서 장착한 랭킹 이름표. 기존 순위·사진 레이아웃은 그대로 두고
+   카드 표면과 테두리만 바꾼다. */
+.ranking-photo-card[data-game-banner="blueprint"] {
+  border-color: rgba(74, 130, 164, 0.48);
+  background:
+    linear-gradient(rgba(86, 151, 184, 0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(86, 151, 184, 0.06) 1px, transparent 1px),
+    color-mix(in srgb, #dcecf2 46%, var(--typenews-glass-strong));
+  background-size: 14px 14px, 14px 14px, auto;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.2), 0 8px 22px rgba(49, 104, 132, .12);
+}
+
+.ranking-photo-card[data-game-banner="copper"] {
+  border-color: rgba(145, 92, 55, 0.5);
+  background: linear-gradient(120deg, rgba(185, 118, 73, .18), rgba(255, 240, 215, .18) 48%, rgba(122, 74, 50, .13));
+  box-shadow: inset 0 0 0 1px rgba(255, 232, 204, .26), 0 8px 22px rgba(112, 70, 43, .12);
+}
+
+.ranking-photo-card[data-game-banner="midnight"] {
+  border-color: rgba(98, 131, 169, .52);
+  background: linear-gradient(120deg, rgba(28, 34, 46, .86), rgba(48, 61, 82, .72));
+  color: #edf3fa;
+  box-shadow: inset 3px 0 #789dc4, inset 0 0 0 1px rgba(255,255,255,.08), 0 10px 28px rgba(21, 29, 42, .22);
+}
+
+.ranking-photo-card[data-game-banner="midnight"] .card-right,
+.ranking-photo-card[data-game-banner="midnight"] .rank-name { color: #f4f7fb; }
+
+.ranking-photo-card[data-game-banner="gold"] {
+  border-color: rgba(165, 116, 30, .66);
+  background: linear-gradient(115deg, rgba(255, 244, 199, .28), rgba(192, 137, 40, .19) 48%, rgba(255, 235, 161, .3));
+  box-shadow: inset 0 0 0 1px rgba(255, 247, 208, .5), 0 10px 30px rgba(151, 101, 24, .18);
+}
+
 .sub-nav-frosted {
   top: 56px;
   width: min(1064px, calc(100vw - 48px));

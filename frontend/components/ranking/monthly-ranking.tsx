@@ -5,6 +5,7 @@ import { AnimatePresence, LayoutGroup, motion, useReducedMotion } from "motion/r
 import { ScoreValue } from "@/components/common/score-value";
 import { ProfileDecorationLine } from "@/components/profile/profile-decoration-line";
 import { loadProfileDecorations, type ProfileDecoration } from "@/features/profile/decorations";
+import { loadGameCosmetics, type PublicGameCosmetic } from "@/features/game/cosmetics";
 import {
   PROFILE_PHOTO_UPDATED_EVENT,
   publicProfilePhotoUrl,
@@ -50,6 +51,7 @@ export function MonthlyRanking() {
   const [entries, setEntries] = useState<RankingEntry[]>([]);
   const [myEntry, setMyEntry] = useState<MyRankingEntry | null>(null);
   const [decorations, setDecorations] = useState<Map<string, ProfileDecoration>>(new Map());
+  const [gameCosmetics, setGameCosmetics] = useState<Map<string, PublicGameCosmetic>>(new Map());
   const [expandedCardKey, setExpandedCardKey] = useState<string | null>(null);
   const [status, setStatus] = useState<"loading" | "config" | "unavailable" | "empty" | "error" | "">("loading");
 
@@ -92,7 +94,13 @@ export function MonthlyRanking() {
         hasLoaded = true;
 
         try {
-          setDecorations(await loadProfileDecorations(supabase, rows.map((row) => row.profile_id)));
+          const profileIds = rows.map((row) => row.profile_id);
+          const [loadedDecorations, loadedCosmetics] = await Promise.all([
+            loadProfileDecorations(supabase, profileIds),
+            loadGameCosmetics(supabase, profileIds).catch(() => new Map<string, PublicGameCosmetic>()),
+          ]);
+          setDecorations(loadedDecorations);
+          setGameCosmetics(loadedCosmetics);
         } catch {
           setDecorations(new Map());
         }
@@ -125,8 +133,14 @@ export function MonthlyRanking() {
         } : null);
         if (row && !rows.some((entry) => entry.profile_id === row.profile_id)) {
           try {
-            const mine = await loadProfileDecorations(supabase, [row.profile_id]);
-            if (active) setDecorations((current) => new Map([...current, ...mine]));
+            const [mine, mineCosmetics] = await Promise.all([
+              loadProfileDecorations(supabase, [row.profile_id]),
+              loadGameCosmetics(supabase, [row.profile_id]).catch(() => new Map<string, PublicGameCosmetic>()),
+            ]);
+            if (active) {
+              setDecorations((current) => new Map([...current, ...mine]));
+              setGameCosmetics((current) => new Map([...current, ...mineCosmetics]));
+            }
           } catch {
             // A decoration failure must not hide the user's ranking.
           }
@@ -161,6 +175,7 @@ export function MonthlyRanking() {
     if (document.visibilityState === "visible") start();
     document.addEventListener("visibilitychange", onVisibilityChange);
     window.addEventListener(PROFILE_PHOTO_UPDATED_EVENT, loadRanking);
+    window.addEventListener("typenews:game-cosmetics-updated", loadRanking);
     const { data: authSubscription } = supabase.auth.onAuthStateChange(() => {
       window.setTimeout(() => void loadRanking(), 0);
     });
@@ -170,6 +185,7 @@ export function MonthlyRanking() {
       stop();
       document.removeEventListener("visibilitychange", onVisibilityChange);
       window.removeEventListener(PROFILE_PHOTO_UPDATED_EVENT, loadRanking);
+      window.removeEventListener("typenews:game-cosmetics-updated", loadRanking);
       authSubscription.subscription.unsubscribe();
     };
   }, []);
@@ -207,6 +223,7 @@ export function MonthlyRanking() {
         transition={{ layout: { type: "spring", stiffness: 360, damping: 34, mass: 0.8 } }}
         className={`card-style ranking-photo-card${canExpand ? " has-photo" : ""}${isExpanded ? " is-expanded" : ""}`}
         data-rank={rank && rank <= 3 ? rank : undefined}
+        data-game-banner={gameCosmetics.get(entry.profileId)?.ranking_banner_style ?? undefined}
         style={rowIndex === undefined ? undefined : { "--row-index": rowIndex } as CSSProperties}
       >
         <div className="ranking-row-toggle">

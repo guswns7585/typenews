@@ -58,8 +58,9 @@ export function LegacyShell({ children, showTypingChrome = true, wide = false }:
   const isTyping = pathname === "/";
   const isEvent = pathname === "/event";
   const isShowcase = pathname.startsWith("/showcase");
+  const isWorkshop = pathname.startsWith("/workshop");
   const isAdmin = pathname.startsWith("/admin");
-  const selectedNavTab = isTyping ? "typing" : isEvent ? "event" : isShowcase ? "showcase" : null;
+  const selectedNavTab = isTyping ? "typing" : isEvent ? "event" : isShowcase ? "showcase" : isWorkshop ? "workshop" : null;
   const reduceNavMotion = useReducedMotion();
   const isSpreadsheet = !isAdmin && visualTheme === "spreadsheet";
   const isVscode = !isAdmin && visualTheme === "vscode";
@@ -186,6 +187,26 @@ export function LegacyShell({ children, showTypingChrome = true, wide = false }:
               <span className="global-nav-tab-label global-nav-tab-with-badge">
                 {t("아카이브", "Archive")}
                 <small className="global-nav-beta-badge">Beta</small>
+              </span>
+            </MotionLink>
+            <MotionLink
+              href="/workshop"
+              aria-current={isWorkshop ? "page" : undefined}
+              whileTap={reduceNavMotion ? undefined : { scale: 0.96 }}
+              whileFocus={reduceNavMotion ? undefined : { scale: 1.025 }}
+            >
+              {selectedNavTab === "workshop" ? (
+                <motion.span
+                  className="global-nav-tab-indicator"
+                  layoutId="primary-nav-tab-selection"
+                  transition={reduceNavMotion
+                    ? { duration: 0.01 }
+                    : { type: "spring", stiffness: 470, damping: 38, mass: 0.72 }}
+                />
+              ) : null}
+              <span className="global-nav-tab-label global-nav-tab-with-badge">
+                {t("공방", "Workshop")}
+                <small className="global-nav-beta-badge">Alpha</small>
               </span>
             </MotionLink>
           </nav>

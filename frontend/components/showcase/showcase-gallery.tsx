@@ -10,6 +10,7 @@ import { ShowcaseSpaceDirectory } from "@/components/showcase/showcase-space-dir
 import { ShowcaseAudioPlayer } from "@/components/showcase/showcase-audio-player";
 import { ProfileDecorationLine } from "@/components/profile/profile-decoration-line";
 import { loadProfileDecorations, type ProfileDecoration } from "@/features/profile/decorations";
+import { loadGameCosmetics, type PublicGameCosmetic } from "@/features/game/cosmetics";
 import { useAuthProfile } from "@/components/auth/auth-button";
 import { signedShowcaseUrl } from "@/features/showcase/media";
 import { readShowcaseDraft, type ShowcaseEditorDraft } from "@/features/showcase/audio-draft";
@@ -58,6 +59,7 @@ export function ShowcaseGallery({ profileId = null }: { profileId?: string | nul
   const [total, setTotal] = useState(0);
   const [profileName, setProfileName] = useState("");
   const [decorations, setDecorations] = useState<Map<string, ProfileDecoration>>(new Map());
+  const [gameCosmetics, setGameCosmetics] = useState<Map<string, PublicGameCosmetic>>(new Map());
   const [space, setSpace] = useState<ShowcaseSpaceView | null>(null);
   const [queryDraft, setQueryDraft] = useState("");
   const [query, setQuery] = useState("");
@@ -98,12 +100,22 @@ export function ShowcaseGallery({ profileId = null }: { profileId?: string | nul
     });
     setProfileName(row.display_name);
     try {
-      const loaded = await loadProfileDecorations(supabase, [row.profile_id]);
+      const [loaded, loadedGameCosmetics] = await Promise.all([
+        loadProfileDecorations(supabase, [row.profile_id]),
+        loadGameCosmetics(supabase, [row.profile_id]).catch(() => new Map<string, PublicGameCosmetic>()),
+      ]);
       setDecorations((current) => new Map([...current, ...loaded]));
+      setGameCosmetics((current) => new Map([...current, ...loadedGameCosmetics]));
     } catch { /* Decorations are optional profile metadata. */ }
   }, [profileId]);
 
   useEffect(() => { void Promise.resolve().then(loadSpace); }, [loadSpace, signedIn]);
+
+  useEffect(() => {
+    const refresh = () => void loadSpace();
+    window.addEventListener("typenews:game-cosmetics-updated", refresh);
+    return () => window.removeEventListener("typenews:game-cosmetics-updated", refresh);
+  }, [loadSpace]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => setQuery(queryDraft.trim()), 300);
@@ -128,8 +140,13 @@ export function ShowcaseGallery({ profileId = null }: { profileId?: string | nul
       if (error) throw error;
       const rows = (data ?? []) as ShowcaseItem[];
       try {
-        const loaded = await loadProfileDecorations(supabase, rows.map((row) => row.profile_id));
+        const profileIds = rows.map((row) => row.profile_id);
+        const [loaded, loadedGameCosmetics] = await Promise.all([
+          loadProfileDecorations(supabase, profileIds),
+          loadGameCosmetics(supabase, profileIds).catch(() => new Map<string, PublicGameCosmetic>()),
+        ]);
         setDecorations((current) => new Map([...current, ...loaded]));
+        setGameCosmetics((current) => new Map([...current, ...loadedGameCosmetics]));
       } catch { /* Keep the archive usable if decorations are unavailable. */ }
       if (profileId && rows[0]?.display_name) setProfileName(rows[0].display_name);
       const resolved = await Promise.all(rows.map(resolveItem));
@@ -195,7 +212,7 @@ export function ShowcaseGallery({ profileId = null }: { profileId?: string | nul
   const canManage = signedIn && (!profileId || Boolean(space?.is_owner));
 
   return (
-    <section className={styles.page}>
+    <section className={styles.page} data-game-theme={profileId ? gameCosmetics.get(profileId)?.archive_theme_style ?? undefined : undefined}>
       {profileId && space ? <>
         <Link className={styles.personalBackLink} href="/showcase">← {t("전체 아카이브", "All archives")}</Link>
         <header className={styles.personalHero}>

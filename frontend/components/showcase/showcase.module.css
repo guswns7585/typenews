@@ -27,6 +27,39 @@
 .featuredEmpty p { margin: 0; line-height: 1.55; font-size: 12px; }
 .personalActions { display: flex; align-items: center; flex-wrap: wrap; gap: 7px; }
 .personalHero .secondaryButton, .personalHero .primaryButton { color: inherit; }
+
+.page[data-game-theme="blueprint"] .personalHero {
+  --archive-accent: #376f91;
+  border-color: rgba(62, 115, 146, .4);
+  background:
+    linear-gradient(rgba(62, 115, 146, .055) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(62, 115, 146, .055) 1px, transparent 1px),
+    color-mix(in srgb, #dcecf2 40%, var(--typenews-glass));
+  background-size: 18px 18px, 18px 18px, auto;
+  box-shadow: 0 18px 50px rgba(39, 93, 122, .13), var(--typenews-inset);
+}
+
+.page[data-game-theme="nocturne"] .personalHero {
+  --archive-accent: #aabfe0;
+  border-color: rgba(135, 159, 197, .36);
+  color: #eef3fa;
+  background:
+    radial-gradient(circle at 82% 12%, rgba(112, 145, 190, .18), transparent 31%),
+    linear-gradient(135deg, rgba(27, 31, 43, .92), rgba(48, 55, 74, .86));
+  box-shadow: 0 20px 55px rgba(20, 24, 35, .28), inset 0 1px rgba(255,255,255,.09);
+}
+
+.page[data-game-theme="nocturne"] .spaceStats span,
+.page[data-game-theme="nocturne"] .personalIdentity p { color: rgba(238, 243, 250, .72); }
+
+.page[data-game-theme="pressroom"] .personalHero {
+  --archive-accent: #8d6324;
+  border-color: rgba(137, 94, 31, .48);
+  background:
+    repeating-linear-gradient(90deg, transparent 0 36px, rgba(126, 84, 32, .035) 36px 37px),
+    linear-gradient(125deg, rgba(244, 222, 172, .34), rgba(165, 113, 45, .14) 52%, rgba(255, 242, 208, .3));
+  box-shadow: 0 20px 56px rgba(112, 75, 27, .16), inset 0 0 0 1px rgba(255, 246, 213, .3);
+}
 .primaryButton, .secondaryButton, .loadMore, .textButton { display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-height: 38px; padding: 8px 13px; border: 0; border-radius: var(--radius-sm); color: var(--color-ink); background: var(--typenews-button); box-shadow: var(--typenews-button-shadow), var(--typenews-inset); cursor: pointer; font: inherit; font-size: 12px; font-weight: 650; text-decoration: none; transition: background .16s ease, transform .16s ease; }
 .primaryButton { background: color-mix(in srgb, var(--typenews-button) 74%, rgba(92,68,64,.18)); box-shadow: var(--typenews-button-shadow), var(--typenews-inset); font-weight: 700; }
 .primaryButton:hover, .secondaryButton:hover, .loadMore:hover, .textButton:hover { background: rgba(255,255,255,.38); transform: translateY(-1px); }
