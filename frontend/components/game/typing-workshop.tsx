@@ -9,7 +9,7 @@ import { RARITY_LABELS } from "@/features/game/types";
 import { getSupabaseClient } from "@/lib/supabase/client";
 import { messageOf } from "@/lib/supabase/errors";
 import { useUiLanguage } from "@/lib/ui-language";
-import { WorkshopLoopPreview } from "./workshop-loop-preview";
+import { WorkshopProduction } from "./workshop-loop-preview";
 import styles from "./typing-workshop.module.css";
 
 const DRAW_COST = 600;
@@ -194,7 +194,7 @@ export function TypingWorkshop() {
         <div><span>{t("수집", "Collection")}</span><strong>{state.inventory.length}/{state.catalog.length}</strong></div>
       </div>
 
-      {preview ? <WorkshopLoopPreview locale={locale} /> : null}
+      <WorkshopProduction locale={locale} preview={preview} />
 
       <div className={styles.mainGrid}>
         <section className={styles.workbench}>

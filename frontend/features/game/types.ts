@@ -43,6 +43,40 @@ export type GameDrawResult = {
   quantity_owned: number;
 };
 
+export type WorkshopContract = {
+  id: string;
+  nameKo: string;
+  nameEn: string;
+  descriptionKo: string;
+  descriptionEn: string;
+  targetCopies: number;
+  minQuality: number;
+  rewardCoins: number;
+  rewardReputation: number;
+  delivered?: number;
+  completedAt?: string | null;
+};
+
+export type TypingWorkshopState = {
+  progress: {
+    manuscripts: number;
+    plates: number;
+    editions: number;
+    coins: number;
+    reputation: number;
+    regionTier: number;
+    quality: number;
+    lastProcessedAt: string;
+  };
+  stations: {
+    typeset: number;
+    proof: number;
+    press: number;
+  };
+  activeContract: WorkshopContract | null;
+  offers: WorkshopContract[];
+};
+
 export const RARITY_LABELS: Record<GameRarity, { ko: string; en: string }> = {
   common: { ko: "일반", en: "Common" },
   rare: { ko: "희귀", en: "Rare" },
