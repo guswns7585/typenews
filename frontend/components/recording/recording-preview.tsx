@@ -11,18 +11,20 @@ import { RecordingTimeline } from "./recording-timeline";
 import styles from "./recording.module.css";
 import editor from "./editor.module.css";
 
-export function RecordingPreview({ recording, initialRange, onClose, onExport }: {
+export function RecordingPreview({ recording, initialRange, onClose, onExport, onUseAudio, maxSelectionDuration }: {
   recording: RecordingResult;
   initialRange?: TrimRange;
   onClose: () => void;
   onExport: (range: TrimRange) => void;
+  onUseAudio?: (range: TrimRange) => void;
+  maxSelectionDuration?: number;
 }) {
   const { t } = useUiLanguage();
   const dialog = useRef<HTMLDialogElement>(null);
   const video = useRef<HTMLVideoElement>(null);
   const rangePreview = useRef(false);
   const [duration, setDuration] = useState(recording.duration);
-  const [range, setRange] = useState<TrimRange>(initialRange ?? { start: 0, end: recording.duration });
+  const [range, setRange] = useState<TrimRange>(initialRange ?? { start: 0, end: Math.min(recording.duration, maxSelectionDuration ?? recording.duration) });
   const [time, setTime] = useState(0);
   const [playing, setPlaying] = useState(false);
   const [loop, setLoop] = useState(false);
@@ -34,7 +36,8 @@ export function RecordingPreview({ recording, initialRange, onClose, onExport }:
   const title = useId();
   const busy = false;
   const length = range.end - range.start;
-  const valid = duration >= MIN_SELECTION && length >= MIN_SELECTION - 0.00001;
+  const valid = duration >= MIN_SELECTION && length >= MIN_SELECTION - 0.00001
+    && (!maxSelectionDuration || length <= maxSelectionDuration + 0.00001);
 
   useEffect(() => {
     const url = URL.createObjectURL(recording.blob);
@@ -84,7 +87,7 @@ export function RecordingPreview({ recording, initialRange, onClose, onExport }:
   function exportTrim() {
     if (!valid || !ready) return;
     video.current?.pause(); rangePreview.current = false;
-    onExport(range);
+    (onUseAudio ?? onExport)(range);
   }
   function resetSelection() { setRange({ start: 0, end: duration }); seek(0); setStatus(t("전체 구간을 선택했습니다.", "Selected the full recording.")); }
   function handleEditorKeys(event: ReactKeyboardEvent<HTMLDialogElement>) {
@@ -119,7 +122,7 @@ export function RecordingPreview({ recording, initialRange, onClose, onExport }:
       data-dock-interactive="true" onKeyDownCapture={handleEditorKeys} onKeyUpCapture={handleEditorKeyUp}
       onCancel={(event) => { event.preventDefault(); onClose(); }}>
       <header className={styles.header}>
-        <div><h2 id={title}>{t("녹화 편집", "Edit recording")}</h2><span className={editor.metadata}>{formatTime(duration)} · {(recording.blob.size / 1024 / 1024).toFixed(1)} MB</span></div>
+        <div><h2 id={title}>{onUseAudio ? t("타건음 구간 선택", "Select typing sound") : t("녹화 편집", "Edit recording")}</h2><span className={editor.metadata}>{formatTime(duration)} · {(recording.blob.size / 1024 / 1024).toFixed(1)} MB</span></div>
         <button type="button" onClick={onClose} aria-label={t("미리보기 닫기", "Close preview")} title={t("닫기", "Close")} className={styles.icon}><X size={20} aria-hidden="true" /></button>
       </header>
       <video ref={video} className={`${styles.video} ${editor.preview}`} playsInline preload="auto" muted={muted}
@@ -138,7 +141,7 @@ export function RecordingPreview({ recording, initialRange, onClose, onExport }:
             setDuration(actual);
             setRange(initialRange
               ? { start: clampTime(initialRange.start, actual), end: Math.max(clampTime(initialRange.end, actual), Math.min(actual, initialRange.start + MIN_SELECTION)) }
-              : { start: 0, end: actual });
+              : { start: 0, end: Math.min(actual, maxSelectionDuration ?? actual) });
           }
         }} onError={() => setError(t("미리보기를 재생할 수 없습니다. 원본 다운로드를 이용해 주세요.", "Preview playback failed. Download the original instead."))} />
       <div className={editor.transport}>
@@ -177,10 +180,11 @@ export function RecordingPreview({ recording, initialRange, onClose, onExport }:
         </div>
       </div>
       {recording.notice && <p className={editor.notice} role="status">{recording.notice}</p>}
+      {maxSelectionDuration && length > maxSelectionDuration ? <p className={styles.error} role="alert">{t(`타건음은 ${maxSelectionDuration}초 이하로 선택해 주세요.`, `Select up to ${maxSelectionDuration} seconds for the typing sound.`)}</p> : null}
       {status && <p className={editor.srStatus} role="status">{status}</p>}
       <div className={styles.actions}>
         <button type="button" onClick={() => downloadRecording(recording.blob)}><Download size={16} aria-hidden="true" />{t("원본 다운로드", "Download original")}</button>
-        <button type="button" disabled={!valid || !ready} onClick={exportTrim}><Scissors size={16} aria-hidden="true" />{t("내보내고 타이핑으로", "Export in background")}<span className={editor.exportLength}>{formatTime(length)}</span></button>
+        <button type="button" disabled={!valid || !ready} onClick={exportTrim}><Scissors size={16} aria-hidden="true" />{onUseAudio ? t("이 구간을 타건음으로 사용", "Use this audio selection") : t("내보내고 타이핑으로", "Export in background")}<span className={editor.exportLength}>{formatTime(length)}</span></button>
       </div>
       {error && <p role="alert" className={styles.error}>{error}</p>}
     </dialog>, document.body,

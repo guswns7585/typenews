@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { LogOut } from "lucide-react";
-import { PROFILE_UPDATED_EVENT, signOutUser } from "@/components/auth/auth-button";
+import { Archive, LogOut } from "lucide-react";
+import Link from "next/link";
+import { PROFILE_UPDATED_EVENT, signOutUser, useAuthProfile } from "@/components/auth/auth-button";
 import { ProfilePhotoSettings } from "@/components/settings/profile-photo-settings";
 import { getSupabaseClient } from "@/lib/supabase/client";
 import { messageOf } from "@/lib/supabase/errors";
@@ -27,6 +28,7 @@ function formatRemaining(ms: number) {
 
 export function AccountSettings() {
   const { locale, t } = useUiLanguage();
+  const { profileId } = useAuthProfile();
   const [signedIn, setSignedIn] = useState(false);
   const [nickname, setNickname] = useState("");
   const [nicknameStatus, setNicknameStatus] = useState<Status>({ kind: "idle" });
@@ -196,6 +198,15 @@ export function AccountSettings() {
         ) : null}
         {nicknameStatus.message ? (
           <p className={`settings-status is-${nicknameStatus.kind}`}>{nicknameStatus.message}</p>
+        ) : null}
+        {profileId ? (
+          <div className="settings-row settings-row-end">
+            <span className="settings-hint">{t("내 키보드 공간", "My keyboard space")}</span>
+            <Link className="chip-pill" href={`/showcase?profile=${profileId}`}>
+              <Archive size={14} />
+              {t("내 아카이브 보기", "View my archive")}
+            </Link>
+          </div>
         ) : null}
         {/* 로그아웃은 원래 헤더에서 설정 버튼 바로 옆에 있었다. 닉네임까지 함께
             적혀 있어서 설정을 누르려다 로그아웃되는 일이 잦다는 제보를 받았다.

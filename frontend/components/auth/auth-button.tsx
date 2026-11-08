@@ -41,6 +41,8 @@ export function useAuthProfile() {
   const [isConfigured] = useState(hasSupabaseConfig);
   const [email, setEmail] = useState<string | null>(null);
   const [nickname, setNickname] = useState<string | null>(null);
+  const [profileId, setProfileId] = useState<string | null>(null);
+  const [authReady, setAuthReady] = useState(() => !hasSupabaseConfig());
 
   useEffect(() => {
     if (!isConfigured) return;
@@ -54,26 +56,32 @@ export function useAuthProfile() {
        바꿔도 여기 표시는 그대로였다. */
     async function loadNickname(signedIn: boolean) {
       if (!signedIn) {
-        if (active) setNickname(null);
+        if (active) {
+          setNickname(null);
+          setProfileId(null);
+        }
         return;
       }
-      const { data, error } = await supabase!.from("profiles").select("display_name").maybeSingle();
+      const { data, error } = await supabase!.from("profiles").select("id, display_name").maybeSingle();
       if (!active) return;
       if (error) {
         console.error("프로필 이름 불러오기 실패", error);
         return;
       }
       setNickname(data?.display_name ?? null);
+      setProfileId(data?.id ?? null);
     }
 
     void supabase.auth.getSession().then(({ data }) => {
       if (!active) return;
       setEmail(data.session?.user?.email ?? null);
+      setAuthReady(true);
       void loadNickname(Boolean(data.session));
     });
 
     const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
       setEmail(session?.user?.email ?? null);
+      setAuthReady(true);
       void loadNickname(Boolean(session));
     });
 
@@ -99,7 +107,7 @@ export function useAuthProfile() {
     });
   }
 
-  return { isConfigured, email, nickname, signedIn: Boolean(email), signIn };
+  return { isConfigured, email, nickname, profileId, signedIn: Boolean(email), authReady, signIn };
 }
 
 /** 로그아웃. 로컬 기록 정리는 preferences-sync가 SIGNED_OUT 이벤트로 처리한다. */
