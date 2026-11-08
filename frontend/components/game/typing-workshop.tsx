@@ -9,6 +9,7 @@ import { RARITY_LABELS } from "@/features/game/types";
 import { getSupabaseClient } from "@/lib/supabase/client";
 import { messageOf } from "@/lib/supabase/errors";
 import { useUiLanguage } from "@/lib/ui-language";
+import { WorkshopLoopPreview } from "./workshop-loop-preview";
 import styles from "./typing-workshop.module.css";
 
 const DRAW_COST = 600;
@@ -55,7 +56,7 @@ function ItemSign({ item, hidden = false }: { item: Pick<GameItem, "id" | "rarit
   return <span className={styles.itemSign} data-rarity={item.rarity} data-hidden={hidden}>{hasArtwork ? (
     // Generated project artwork, split from a consistent inventory sprite sheet.
     // eslint-disable-next-line @next/next/no-img-element
-    <img src={`/game/items/${item.id}.webp`} alt="" />
+    <img src={`/game/items-pixel/${item.id}.png`} alt="" />
   ) : hidden ? "?" : ITEM_SIGNS[item.id] ?? "•"}</span>;
 }
 
@@ -179,9 +180,9 @@ export function TypingWorkshop() {
     <section className={styles.page}>
       <header className={styles.hero}>
         <div>
-          <span className={styles.kicker}>{t("타이핑 방치형 수집", "Typing idle collection")}</span>
+          <span className={styles.kicker}>{t("타이핑 제작 방치형", "Typing production idle game")}</span>
           <h1>{t("활자 공방", "Type Workshop")}<small>Alpha</small></h1>
-          <p>{t("검증된 타수 10타마다 잉크 1개가 쌓입니다. 공방 물건은 게임 속 생산량만 올립니다.", "Every 10 verified strokes earns 1 ink. Workshop items only affect the game economy.")}</p>
+          <p>{t("타이핑으로 원고를 만들고, 조판·교정·인쇄 공정을 운영해 신문 의뢰를 완수합니다. 수집한 물건은 각 공정에 배치합니다.", "Create copy by typing, run the typesetting, proofreading, and printing line, then fulfill newspaper commissions.")}</p>
         </div>
         <Link href="/" className={styles.typeLink}>{t("타이핑하러 가기", "Go type")}</Link>
       </header>
@@ -193,13 +194,15 @@ export function TypingWorkshop() {
         <div><span>{t("수집", "Collection")}</span><strong>{state.inventory.length}/{state.catalog.length}</strong></div>
       </div>
 
+      {preview ? <WorkshopLoopPreview locale={locale} /> : null}
+
       <div className={styles.mainGrid}>
         <section className={styles.workbench}>
           <header><div><span>{t("현재 공방", "Current workshop")}</span><strong>{t("편집실 1호", "Newsroom No. 1")}</strong></div><span>{t("최대 8시간 보관", "Stores up to 8 hours")}</span></header>
           <div className={styles.scene} aria-label={t("수집한 물건이 놓인 활자 공방", "Workshop containing collected items")}>
             {/* Generated project artwork, optimized to WebP before being committed. */}
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img className={styles.workshopArt} src="/game/workshop-scene-v1.webp" alt="" />
+            <img className={styles.workshopArt} src="/game/workshop-scene-pixel-v2.png" alt="" />
             <div className={styles.sceneHud}><span>{t("발견한 물건", "Discovered")}</span><strong>{state.inventory.length} / {state.catalog.length}</strong></div>
           </div>
           <div className={styles.passiveBar}>
@@ -211,7 +214,7 @@ export function TypingWorkshop() {
         <section className={styles.drawPanel}>
           <header><span>{t("공방 보급함", "Workshop supply")}</span><strong>{t("오래된 물건 상자", "Old newsroom box")}</strong></header>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img className={styles.chestArt} src="/game/supply-chest-v1.webp" alt="" aria-hidden="true" />
+          <img className={styles.chestArt} src="/game/supply-chest-pixel-v2.png" alt="" aria-hidden="true" />
           <p>{t("도구, 동료, 이름표와 아카이브 장식이 나옵니다.", "Contains tools, companions, nameplates, and archive decorations.")}</p>
           <div className={styles.pity}><span>{t("희귀 이상 확정까지", "Rare guarantee")}</span><strong>{20 - state.wallet.pityCount}{t("회", " draws")}</strong></div>
           <div className={styles.drawActions}>
