@@ -8,6 +8,8 @@ import { ShowcaseManager } from "@/components/showcase/showcase-manager";
 import { ShowcaseSpaceEditor } from "@/components/showcase/showcase-space-editor";
 import { ShowcaseSpaceDirectory } from "@/components/showcase/showcase-space-directory";
 import { ShowcaseAudioPlayer } from "@/components/showcase/showcase-audio-player";
+import { ProfileDecorationLine } from "@/components/profile/profile-decoration-line";
+import { loadProfileDecorations, type ProfileDecoration } from "@/features/profile/decorations";
 import { useAuthProfile } from "@/components/auth/auth-button";
 import { signedShowcaseUrl } from "@/features/showcase/media";
 import { readShowcaseDraft, type ShowcaseEditorDraft } from "@/features/showcase/audio-draft";
@@ -55,6 +57,7 @@ export function ShowcaseGallery({ profileId = null }: { profileId?: string | nul
   const [message, setMessage] = useState("");
   const [total, setTotal] = useState(0);
   const [profileName, setProfileName] = useState("");
+  const [decorations, setDecorations] = useState<Map<string, ProfileDecoration>>(new Map());
   const [space, setSpace] = useState<ShowcaseSpaceView | null>(null);
   const [queryDraft, setQueryDraft] = useState("");
   const [query, setQuery] = useState("");
@@ -94,6 +97,10 @@ export function ShowcaseGallery({ profileId = null }: { profileId?: string | nul
       profilePhotoUrl: publicProfilePhotoUrl(supabase, row.profile_thumbnail_path, row.profile_photo_updated_at),
     });
     setProfileName(row.display_name);
+    try {
+      const loaded = await loadProfileDecorations(supabase, [row.profile_id]);
+      setDecorations((current) => new Map([...current, ...loaded]));
+    } catch { /* Decorations are optional profile metadata. */ }
   }, [profileId]);
 
   useEffect(() => { void Promise.resolve().then(loadSpace); }, [loadSpace, signedIn]);
@@ -120,6 +127,10 @@ export function ShowcaseGallery({ profileId = null }: { profileId?: string | nul
       });
       if (error) throw error;
       const rows = (data ?? []) as ShowcaseItem[];
+      try {
+        const loaded = await loadProfileDecorations(supabase, rows.map((row) => row.profile_id));
+        setDecorations((current) => new Map([...current, ...loaded]));
+      } catch { /* Keep the archive usable if decorations are unavailable. */ }
       if (profileId && rows[0]?.display_name) setProfileName(rows[0].display_name);
       const resolved = await Promise.all(rows.map(resolveItem));
       if (profileId && resolved[0]) setSpace((current) => current ?? {
@@ -194,7 +205,7 @@ export function ShowcaseGallery({ profileId = null }: { profileId?: string | nul
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={space.profilePhotoUrl} alt="" />
               ) : space.display_name.slice(0, 1)}</span>
-              <div><h1>{space.display_name}</h1>{space.intro ? <p>{space.intro}</p> : null}</div>
+              <div><h1>{space.display_name}<ProfileDecorationLine decoration={decorations.get(space.profile_id)} /></h1>{space.intro ? <p>{space.intro}</p> : null}</div>
             </div>
             <div className={styles.spaceStats}><span><strong>{space.keyboard_count}</strong>{t("키보드", "keyboards")}</span><span><strong>{space.total_likes}</strong>{t("받은 좋아요", "likes received")}</span></div>
             {space.is_owner ? <div className={styles.personalActions}><button type="button" className={styles.secondaryButton} onClick={() => setSpaceEditorOpen(true)}>{t("공간 정보 편집", "Edit space")}</button><button type="button" className={styles.secondaryButton} onClick={() => setManagerOpen(true)}>{t("키보드 관리", "Manage keyboards")}</button><button type="button" className={styles.primaryButton} onClick={() => { setEditingItem(null); setEditorOpen(true); }}>{t("키보드 추가", "Add keyboard")}</button></div> : null}
@@ -257,7 +268,7 @@ export function ShowcaseGallery({ profileId = null }: { profileId?: string | nul
                       <img src={item.profilePhotoUrl} alt="" />
                     ) : item.display_name.slice(0, 1)}
                   </span>
-                  <Link href={`/showcase?profile=${item.profile_id}`}>{item.display_name}</Link>
+                  <Link href={`/showcase?profile=${item.profile_id}`}>{item.display_name}</Link><ProfileDecorationLine decoration={decorations.get(item.profile_id)} />
                 </div>
                 <Link className={styles.cardTitle} href={`/showcase/${item.item_id}`}>{item.title}</Link>
                 <div className={styles.buildTags}>
