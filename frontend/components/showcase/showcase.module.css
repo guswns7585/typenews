@@ -222,6 +222,11 @@
 .buildList dt { color: var(--color-ink-muted-48); font-size: 11px; font-weight: 800; }
 .buildList dd { margin: 0; font-size: 13px; overflow-wrap: anywhere; }
 .detailActions { flex-wrap: wrap; }
+.commentJumpButton { display: flex; width: 100%; min-height: 42px; margin-top: 12px; padding: 9px 12px; align-items: center; justify-content: space-between; gap: 12px; border: 1px solid rgba(141,83,101,.2); border-radius: var(--radius-sm); color: var(--color-ink); background: rgba(255,255,255,.26); box-shadow: var(--typenews-inset); cursor: pointer; font: inherit; transition: transform .16s ease, background .16s ease, border-color .16s ease; }
+.commentJumpButton:hover { border-color: rgba(141,83,101,.34); background: rgba(255,255,255,.42); transform: translateY(-1px); }
+.commentJumpButton > span { display: inline-flex; min-width: 0; align-items: center; gap: 8px; }
+.commentJumpButton strong { font-size: 12px; }
+.commentJumpButton small { color: var(--color-ink-muted-48); font-size: 10px; white-space: nowrap; }
 .reportDialog { width: min(520px, calc(100vw - 28px)); }
 .reportFields { display: grid; gap: 14px; }
 .reportFields label { display: grid; gap: 6px; color: var(--color-ink-muted-80); font-size: 12px; font-weight: 700; }

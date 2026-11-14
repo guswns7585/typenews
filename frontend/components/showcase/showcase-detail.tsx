@@ -1,6 +1,6 @@
 "use client";
 
-import { Bookmark, EyeOff, Flag, Heart, LoaderCircle, Share2, ShieldAlert, Trash2, X } from "lucide-react";
+import { Bookmark, EyeOff, Flag, Heart, LoaderCircle, MessageCircle, Share2, ShieldAlert, Trash2, X } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
@@ -28,6 +28,7 @@ export function ShowcaseDetail({ itemId }: { itemId: string }) {
   const [loading, setLoading] = useState(true);
   const [reportOpen, setReportOpen] = useState(false);
   const [decoration, setDecoration] = useState<ProfileDecoration | null>(null);
+  const [commentCount, setCommentCount] = useState(0);
 
   useEffect(() => {
     const supabase = getSupabaseClient();
@@ -123,6 +124,14 @@ export function ShowcaseDetail({ itemId }: { itemId: string }) {
     router.refresh();
   }
 
+  function goToComments() {
+    const section = document.getElementById(`showcase-comments-${itemId}`);
+    const input = document.getElementById(`showcase-comment-input-${itemId}`) as HTMLTextAreaElement | null;
+    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    section?.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "start" });
+    window.setTimeout(() => input?.focus({ preventScroll: true }), reduceMotion ? 0 : 420);
+  }
+
   if (loading) return <div className={styles.loading}><LoaderCircle className={styles.spinning} />{t("불러오는 중", "Loading")}</div>;
   if (!item) return <div className={styles.empty}><strong>{message || t("아카이브 항목이 없습니다", "Archive item unavailable")}</strong><Link href="/showcase">{t("아카이브로 돌아가기", "Back to archive")}</Link></div>;
   const buildSections = SHOWCASE_BUILD_SECTIONS.map((section) => ({
@@ -158,6 +167,10 @@ export function ShowcaseDetail({ itemId }: { itemId: string }) {
             <button type="button" onClick={() => void shareItem()}><Share2 size={16} />{t("공유", "Share")}</button>
             <button type="button" disabled={!authReady} onClick={() => { if (!signedIn) setMessage(t("로그인 필요", "Sign-in required")); else setReportOpen(true); }}><Flag size={16} />{t("신고", "Report")}</button>
           </div>
+          <button type="button" className={styles.commentJumpButton} onClick={goToComments}>
+            <span><MessageCircle size={17} /><strong>{commentCount ? t(`댓글 ${commentCount}개`, `${commentCount} comments`) : t("첫 댓글 남기기", "Leave the first comment")}</strong></span>
+            <small>{t("댓글 남기기", "Write a comment")}</small>
+          </button>
           {message ? <p className={styles.pageMessage}>{message}</p> : null}
         </div>
       </div>
@@ -170,7 +183,7 @@ export function ShowcaseDetail({ itemId }: { itemId: string }) {
           })}</dl></section>
         ))}</div>
       </section> : null}
-      <ShowcaseComments itemId={item.item_id} />
+      <ShowcaseComments itemId={item.item_id} onCountChange={setCommentCount} />
       {reportOpen ? <ShowcaseReportDialog itemId={item.item_id} onClose={() => setReportOpen(false)} onReported={() => { setReportOpen(false); setMessage(t("관리자에게 검토를 요청했습니다", "Review requested")); }} /> : null}
     </article>
   );

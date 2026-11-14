@@ -30,7 +30,7 @@ function isMissingCommentsRpc(error: unknown) {
   return message.includes("get_showcase_comments") && message.includes("schema cache");
 }
 
-export function ShowcaseComments({ itemId }: { itemId: string }) {
+export function ShowcaseComments({ itemId, onCountChange }: { itemId: string; onCountChange?: (count: number) => void }) {
   const { t, locale } = useUiLanguage();
   const { signedIn, authReady } = useAuthProfile();
   const [comments, setComments] = useState<CommentRow[]>([]);
@@ -57,11 +57,14 @@ export function ShowcaseComments({ itemId }: { itemId: string }) {
   useEffect(() => { void Promise.resolve().then(load); }, [load, signedIn]);
 
   const roots = useMemo(() => comments.filter((comment) => comment.parent_id === null), [comments]);
+  const activeCount = useMemo(() => comments.filter((comment) => comment.status === "active").length, [comments]);
   const replies = useMemo(() => {
     const grouped = new Map<number, CommentRow[]>();
     comments.forEach((comment) => { if (comment.parent_id !== null) grouped.set(comment.parent_id, [...(grouped.get(comment.parent_id) ?? []), comment]); });
     return grouped;
   }, [comments]);
+
+  useEffect(() => { onCountChange?.(activeCount); }, [activeCount, onCountChange]);
 
   async function submit(text: string, parentId: number | null) {
     const value = text.trim();
@@ -130,9 +133,9 @@ export function ShowcaseComments({ itemId }: { itemId: string }) {
     </article>;
   }
 
-  return <section className={styles.commentsPanel}>
-    <header className={styles.commentsHeading}><div><MessageCircle size={18} /><h2>{t("댓글", "Comments")}</h2><span>{comments.filter((comment) => comment.status === "active").length}</span></div></header>
-    <div className={styles.commentComposer}><textarea maxLength={500} rows={3} value={body} onChange={(event) => setBody(event.target.value)} disabled={!authReady || busy} placeholder={signedIn ? t("이 키보드에 대해 이야기해 보세요", "Talk about this keyboard") : t("로그인 후 댓글을 남길 수 있습니다", "Sign in to comment")} /><div><span>{body.length} / 500</span><button type="button" disabled={!signedIn || busy || !body.trim()} onClick={() => void submit(body, null)}>{busy ? <LoaderCircle className={styles.spinning} size={14} /> : null}{t("댓글 등록", "Post comment")}</button></div></div>
+  return <section className={styles.commentsPanel} id={`showcase-comments-${itemId}`}>
+    <header className={styles.commentsHeading}><div><MessageCircle size={18} /><h2>{t("댓글", "Comments")}</h2><span>{activeCount}</span></div></header>
+    <div className={styles.commentComposer}><textarea id={`showcase-comment-input-${itemId}`} aria-label={t("댓글 입력", "Comment input")} maxLength={500} rows={3} value={body} onChange={(event) => setBody(event.target.value)} disabled={!authReady || busy} placeholder={signedIn ? t("이 키보드에 대해 이야기해 보세요", "Talk about this keyboard") : t("로그인 후 댓글을 남길 수 있습니다", "Sign in to comment")} /><div><span>{body.length} / 500</span><button type="button" disabled={!signedIn || busy || !body.trim()} onClick={() => void submit(body, null)}>{busy ? <LoaderCircle className={styles.spinning} size={14} /> : null}{t("댓글 등록", "Post comment")}</button></div></div>
     {message ? <p className={styles.pageMessage} role="status">{message}</p> : null}
     {loading ? <div className={styles.commentsLoading}><LoaderCircle className={styles.spinning} />{t("댓글 불러오는 중", "Loading comments")}</div> : roots.length ? <div className={styles.commentList}>{roots.map((comment) => <div key={comment.comment_id}><Comment comment={comment} />{(replies.get(comment.comment_id) ?? []).map((reply) => <Comment key={reply.comment_id} comment={reply} nested />)}</div>)}</div> : <p className={styles.commentsEmpty}>{t("첫 댓글을 남겨 보세요", "Start the conversation")}</p>}
   </section>;
