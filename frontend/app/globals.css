@@ -2089,23 +2089,25 @@ body.bg-custom-gradient {
   z-index: 1;
 }
 
-.global-nav-tab-with-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-}
-
-.global-nav-beta-badge {
-  padding: 1px 4px;
-  border: 1px solid rgba(141, 83, 101, 0.34);
-  border-radius: 999px;
+/* 아카이브의 시험 운영 표시는 메뉴 폭을 늘리지 않는 모서리 표식으로 둔다. */
+.global-nav-archive-label { display: inline-block; }
+.global-nav-beta-mark {
+  position: absolute;
+  top: -7px;
+  right: -8px;
+  display: grid;
+  width: 12px;
+  height: 12px;
+  place-items: center;
+  border: 1px solid rgba(141, 83, 101, 0.28);
+  border-radius: 50%;
   color: #8d5365;
-  background: rgba(255, 238, 242, 0.34);
+  background: rgba(255, 238, 242, 0.72);
+  font-family: Georgia, serif;
   font-size: 8px;
-  font-weight: 800;
-  line-height: 1.35;
-  letter-spacing: 0.03em;
-  text-transform: uppercase;
+  font-weight: 700;
+  line-height: 1;
+  box-shadow: 0 1px 3px rgba(61, 38, 45, 0.1);
 }
 
 .global-nav-tab-with-dot { position: relative; }

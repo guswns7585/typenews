@@ -185,9 +185,9 @@ export function LegacyShell({ children, showTypingChrome = true, wide = false }:
                     : { type: "spring", stiffness: 470, damping: 38, mass: 0.72 }}
                 />
               ) : null}
-              <span className="global-nav-tab-label global-nav-tab-with-badge">
+              <span className="global-nav-tab-label global-nav-archive-label">
                 {t("아카이브", "Archive")}
-                <small className="global-nav-beta-badge">Beta</small>
+                <small className="global-nav-beta-mark" title="Beta" aria-label="Beta">β</small>
               </span>
             </MotionLink>
             <MotionLink
