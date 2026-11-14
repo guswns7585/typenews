@@ -1,6 +1,6 @@
 "use client";
 
-import { Bookmark, EyeOff, Heart, LoaderCircle } from "lucide-react";
+import { Bookmark, EyeOff, Heart, LoaderCircle, RotateCcw } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { ShowcaseEditor } from "@/components/showcase/showcase-editor";
@@ -22,6 +22,15 @@ import { useUiLanguage } from "@/lib/ui-language";
 import styles from "./showcase.module.css";
 
 const PAGE_SIZE = 18;
+
+type HiddenShowcaseItem = {
+  item_id: string;
+  title: string;
+  display_name: string;
+  thumbnail_path: string;
+  updated_at: string;
+  thumbnailUrl: string | null;
+};
 
 async function resolveItem(item: ShowcaseItem): Promise<ShowcaseViewItem> {
   const supabase = getSupabaseClient();
@@ -66,6 +75,9 @@ export function ShowcaseGallery({ profileId = null }: { profileId?: string | nul
   const [sort, setSort] = useState<"newest" | "likes" | "bookmarks">("newest");
   const [bookmarkedOnly, setBookmarkedOnly] = useState(false);
   const [directoryView, setDirectoryView] = useState<"spaces" | "keyboards">("spaces");
+  const [hiddenPanelOpen, setHiddenPanelOpen] = useState(false);
+  const [hiddenItems, setHiddenItems] = useState<HiddenShowcaseItem[]>([]);
+  const [hiddenLoading, setHiddenLoading] = useState(false);
   const activeBookmarkFilter = signedIn && bookmarkedOnly;
 
   useEffect(() => {
@@ -203,6 +215,42 @@ export function ShowcaseGallery({ profileId = null }: { profileId?: string | nul
     setTotal((current) => Math.max(0, current - 1));
   }
 
+  async function loadHiddenItems() {
+    const supabase = getSupabaseClient();
+    if (!supabase || !isAdmin) return;
+    setHiddenLoading(true);
+    const { data, error } = await supabase.rpc("admin_get_hidden_showcase_items", { p_limit: 100 });
+    if (error) {
+      setMessage(messageOf(error, t("숨긴 항목을 불러오지 못했습니다", "Could not load hidden items")));
+      setHiddenLoading(false);
+      return;
+    }
+    const rows = (data ?? []) as Omit<HiddenShowcaseItem, "thumbnailUrl">[];
+    const resolved = await Promise.all(rows.map(async (row) => ({
+      ...row,
+      thumbnailUrl: await signedShowcaseUrl(supabase, row.thumbnail_path).catch(() => null),
+    })));
+    setHiddenItems(resolved);
+    setHiddenLoading(false);
+  }
+
+  async function toggleHiddenPanel() {
+    if (hiddenPanelOpen) { setHiddenPanelOpen(false); return; }
+    setHiddenPanelOpen(true);
+    await loadHiddenItems();
+  }
+
+  async function restoreItem(item: HiddenShowcaseItem) {
+    if (!window.confirm(t(`“${item.title}”을 아카이브에 다시 공개할까요?`, `Restore “${item.title}” to the archive?`))) return;
+    const supabase = getSupabaseClient();
+    if (!supabase) return;
+    const { error } = await supabase.rpc("admin_set_showcase_hidden", { p_item_id: item.item_id, p_hidden: false });
+    if (error) { setMessage(messageOf(error, t("항목을 복구하지 못했습니다", "Could not restore item"))); return; }
+    setHiddenItems((current) => current.filter((candidate) => candidate.item_id !== item.item_id));
+    setMessage(t("아카이브에 다시 공개했습니다", "Restored to the archive"));
+    if (directoryView === "keyboards" || profileId) await load(0);
+  }
+
   const featuredItem = space?.featured_item_id ? items.find((item) => item.item_id === space.featured_item_id) : null;
   const canManage = signedIn && (!profileId || Boolean(space?.is_owner));
 
@@ -232,6 +280,7 @@ export function ShowcaseGallery({ profileId = null }: { profileId?: string | nul
           {profileId ? <Link className={styles.backLink} href="/showcase">← {t("전체 아카이브", "All archives")}</Link> : null}
         </div>
         <div className={styles.heroActions}>
+          {!profileId && isAdmin ? <button type="button" className={styles.secondaryButton} data-active={hiddenPanelOpen} onClick={() => void toggleHiddenPanel()}><EyeOff size={15} />{t("숨김 항목", "Hidden items")}</button> : null}
           {!profileId && myProfileId ? <Link className={styles.secondaryButton} href={`/showcase?profile=${myProfileId}`}>{t("내 공간", "My space")}</Link> : null}
           {canManage ? <button type="button" className={styles.secondaryButton} onClick={() => setManagerOpen(true)}>{t("내 아카이브 관리", "Manage my archive")}</button> : null}
           {!profileId || space?.is_owner ? <button type="button" className={styles.primaryButton} disabled={!authReady} onClick={() => {
@@ -241,6 +290,18 @@ export function ShowcaseGallery({ profileId = null }: { profileId?: string | nul
           }}>{t("키보드 등록", "Add keyboard")}</button> : null}
         </div>
       </header>}
+
+      {!profileId && isAdmin && hiddenPanelOpen ? <section className={styles.hiddenAdminPanel}>
+        <header><div><strong>{t("숨김 항목", "Hidden items")}</strong><span>{hiddenItems.length}</span></div><button type="button" className={styles.textButton} disabled={hiddenLoading} onClick={() => void loadHiddenItems()}>{t("새로고침", "Refresh")}</button></header>
+        {hiddenLoading ? <div className={styles.hiddenAdminEmpty}><LoaderCircle className={styles.spinning} />{t("불러오는 중", "Loading")}</div> : hiddenItems.length ? <div className={styles.hiddenAdminGrid}>{hiddenItems.map((item) => <article key={item.item_id}>
+          <div className={styles.hiddenAdminThumb}>{item.thumbnailUrl ? <>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={item.thumbnailUrl} alt="" />
+          </> : null}</div>
+          <div><strong>{item.title}</strong><span>{item.display_name}</span></div>
+          <button type="button" onClick={() => void restoreItem(item)}><RotateCcw size={14} />{t("복구", "Restore")}</button>
+        </article>)}</div> : <div className={styles.hiddenAdminEmpty}>{t("숨긴 키보드가 없습니다", "No hidden keyboards")}</div>}
+      </section> : null}
 
       {!profileId ? <div className={styles.directoryTabs} role="tablist" aria-label={t("아카이브 보기 방식", "Archive view")}>
         <button type="button" role="tab" aria-selected={directoryView === "spaces"} data-active={directoryView === "spaces"} onClick={() => setDirectoryView("spaces")}>{t("공간 둘러보기", "Explore spaces")}</button>

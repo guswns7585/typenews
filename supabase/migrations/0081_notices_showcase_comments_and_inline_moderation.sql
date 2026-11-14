@@ -205,6 +205,15 @@ as $$
   join public.profiles p on p.id = c.profile_id
   left join public.public_profiles pp on pp.profile_id = c.profile_id
   where c.item_id = p_item_id
+    and (
+      c.status <> 'deleted'
+      or exists (
+        select 1
+        from public.keyboard_showcase_comments child
+        where child.parent_id = c.id
+          and child.status <> 'deleted'
+      )
+    )
     and exists (
       select 1 from public.keyboard_showcase_items i
       where i.id = p_item_id

@@ -71,6 +71,19 @@
 .cardImage img { display: block; width: 100%; height: 100%; object-fit: cover; transition: transform .4s var(--ease-out-soft); }
 .card:hover .cardImage img { transform: scale(1.025); }
 .cardModerateButton { position: absolute; z-index: 3; top: 9px; right: 9px; display: inline-flex; align-items: center; gap: 5px; padding: 7px 9px; border: 1px solid rgba(255,255,255,.48); border-radius: var(--radius-pill); color: #412e34; background: rgba(255,247,247,.88); box-shadow: 0 5px 16px rgba(35,24,27,.18); cursor: pointer; font: inherit; font-size: 10px; font-weight: 750; backdrop-filter: blur(10px); }
+.hiddenAdminPanel { margin: 0 0 22px; padding: 16px; border: 1px solid var(--color-border-subtle); border-radius: var(--radius-lg); background: rgba(255,255,255,.34); }
+.hiddenAdminPanel > header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 13px; }
+.hiddenAdminPanel > header > div { display: flex; align-items: center; gap: 8px; }
+.hiddenAdminPanel > header span { min-width: 22px; padding: 2px 7px; border-radius: var(--radius-pill); text-align: center; background: rgba(55,42,47,.08); font-size: 11px; }
+.hiddenAdminGrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 10px; }
+.hiddenAdminGrid article { display: grid; grid-template-columns: 64px minmax(0,1fr) auto; align-items: center; gap: 11px; padding: 8px; border: 1px solid var(--color-border-subtle); border-radius: var(--radius-md); background: rgba(255,255,255,.42); }
+.hiddenAdminThumb { width: 64px; aspect-ratio: 4 / 3; overflow: hidden; border-radius: var(--radius-sm); background: rgba(55,42,47,.08); }
+.hiddenAdminThumb img { width: 100%; height: 100%; object-fit: cover; }
+.hiddenAdminGrid article > div:nth-child(2) { min-width: 0; display: grid; gap: 3px; }
+.hiddenAdminGrid article strong, .hiddenAdminGrid article span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hiddenAdminGrid article span { color: var(--color-ink-muted-70); font-size: 11px; }
+.hiddenAdminGrid article button { display: inline-flex; align-items: center; gap: 5px; padding: 7px 9px; border: 1px solid var(--color-border-subtle); border-radius: var(--radius-sm); background: transparent; color: inherit; cursor: pointer; font: inherit; font-size: 11px; }
+.hiddenAdminEmpty { min-height: 68px; display: flex; align-items: center; justify-content: center; gap: 8px; color: var(--color-ink-muted-70); font-size: 12px; }
 .cardBody { display: grid; gap: 9px; padding: 14px 15px 16px; }
 .author, .detailAuthor { display: flex; align-items: center; gap: 8px; min-width: 0; color: var(--color-ink-muted-80); font-size: 12px; }
 .author a, .detailAuthor a { overflow: hidden; color: inherit; text-decoration: none; text-overflow: ellipsis; white-space: nowrap; }
