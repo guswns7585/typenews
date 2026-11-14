@@ -3346,6 +3346,51 @@ a.sentence-attribution:hover {
   accent-color: var(--color-primary);
 }
 
+/* 건의함은 주 메뉴가 아니라 어느 화면에서든 여는 헤더 도구다. 설정 패널과
+   같은 재질을 쓰되 입력에 집중할 수 있도록 폭과 간격만 따로 잡는다. */
+.feedback-menu { position: relative; }
+.feedback-trigger { white-space: nowrap; }
+.feedback-panel { width: min(420px, calc(100vw - 24px)); }
+.feedback-form { display: grid; gap: 16px; }
+.feedback-form label { display: grid; gap: 7px; color: var(--color-ink-muted-72); font-size: 11px; font-weight: 700; }
+.feedback-form .settings-input,
+.feedback-form .settings-textarea { width: 100%; box-sizing: border-box; }
+.feedback-form .settings-textarea { min-height: 150px; line-height: 1.65; resize: vertical; }
+.feedback-categories { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+.feedback-categories button { min-height: 34px; padding: 6px 8px; border: 1px solid var(--color-border-subtle, rgba(100,70,70,.16)); border-radius: var(--radius-sm); color: inherit; background: transparent; cursor: pointer; font: inherit; font-size: 11px; }
+.feedback-categories button[data-selected="true"] { border-color: rgba(166,81,84,.32); background: var(--typenews-button); box-shadow: var(--typenews-inset); }
+.feedback-context { margin: -4px 0 0; color: var(--color-ink-muted-48); font-size: 10px; line-height: 1.5; }
+.feedback-submit { justify-content: center; width: 100%; min-height: 38px; }
+.feedback-honeypot { position: absolute !important; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+
+.feedback-admin .admin-section-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; margin-bottom: 18px; }
+.feedback-admin .admin-section-head h2 { margin: 0 0 4px; font-size: 20px; }
+.feedback-admin .admin-section-head p { margin: 0; color: var(--color-ink-muted-48); font-size: 12px; }
+.feedback-admin .admin-filter-row { display: flex; align-items: center; gap: 8px; }
+.feedback-admin select { min-height: 34px; padding: 6px 28px 6px 10px; border: 1px solid var(--color-border-subtle, rgba(100,70,70,.16)); border-radius: 8px; color: inherit; background: var(--color-surface-panel, rgba(255,255,255,.52)); font: inherit; }
+.feedback-admin-list { display: grid; gap: 12px; }
+.feedback-admin-card { padding: 18px; border: 1px solid var(--color-border-subtle, rgba(100,70,70,.16)); border-radius: 12px; background: var(--color-surface-panel, rgba(255,255,255,.52)); }
+.feedback-admin-card > header { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.feedback-admin-card > header > div { display: flex; align-items: center; gap: 8px; color: var(--color-ink-muted-48); font-size: 11px; }
+.feedback-admin-card > header b { padding: 3px 7px; border-radius: 999px; background: var(--color-surface-muted, rgba(100,70,70,.08)); color: var(--color-ink); font-size: 10px; }
+.feedback-admin-card h3 { margin: 14px 0 8px; font-size: 16px; }
+.feedback-admin-body { margin: 0 0 14px; white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.7; }
+.feedback-admin-card dl { display: grid; gap: 5px; margin: 0 0 14px; padding: 11px 0; border-block: 1px solid var(--color-divider-soft); }
+.feedback-admin-card dl > div { display: grid; grid-template-columns: 58px minmax(0,1fr); gap: 10px; font-size: 11px; }
+.feedback-admin-card dt { color: var(--color-ink-muted-48); }
+.feedback-admin-card dd { margin: 0; overflow-wrap: anywhere; }
+.feedback-admin-card > label { display: grid; gap: 6px; font-size: 11px; }
+.feedback-admin-card > footer { display: flex; justify-content: flex-end; margin-top: 10px; }
+.feedback-admin .admin-empty { display: grid; min-height: 160px; place-items: center; color: var(--color-ink-muted-48); }
+
+@media (max-width: 680px) {
+  .feedback-categories { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .feedback-admin .admin-section-head { align-items: stretch; flex-direction: column; }
+  .feedback-admin .admin-filter-row { justify-content: space-between; }
+  .feedback-admin-card > header { align-items: flex-start; }
+  .feedback-admin-card > header > div { align-items: flex-start; flex-wrap: wrap; }
+}
+
 .typing-analytics-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

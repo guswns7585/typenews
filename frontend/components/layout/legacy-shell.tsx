@@ -10,7 +10,7 @@ import { NicknameSetupModal } from "@/components/auth/nickname-setup-modal";
 import { CurrentLogoMark } from "@/components/brand/site-logo";
 import { PrizeClaim } from "@/components/event/prize-claim";
 import { AgentChrome, AgentWorkbench, type AgentTheme } from "@/components/layout/agent-workspace";
-import { FabMail } from "@/components/layout/fab-mail";
+import { FeedbackPanel } from "@/components/feedback/feedback-panel";
 import { HeaderStats } from "@/components/layout/header-stats";
 import {
   SpreadsheetChrome,
@@ -154,17 +154,6 @@ export function LegacyShell({ children, showTypingChrome = true, wide = false }:
               <span className="global-nav-tab-label">{t("타이핑", "Typing")}</span>
             </MotionLink>
             <MotionLink
-              href="/notices"
-              aria-current={isNotices ? "page" : undefined}
-              whileTap={reduceNavMotion ? undefined : { scale: 0.96 }}
-              whileFocus={reduceNavMotion ? undefined : { scale: 1.025 }}
-            >
-              {selectedNavTab === "notices" ? (
-                <motion.span className="global-nav-tab-indicator" layoutId="primary-nav-tab-selection" transition={reduceNavMotion ? { duration: 0.01 } : { type: "spring", stiffness: 470, damping: 38, mass: 0.72 }} />
-              ) : null}
-              <span className="global-nav-tab-label global-nav-tab-with-dot">{t("새소식", "Updates")}<NoticeUnreadDot /></span>
-            </MotionLink>
-            <MotionLink
               href="/event"
               aria-current={isEvent ? "page" : undefined}
               whileTap={reduceNavMotion ? undefined : { scale: 0.96 }}
@@ -201,6 +190,17 @@ export function LegacyShell({ children, showTypingChrome = true, wide = false }:
                 <small className="global-nav-beta-badge">Beta</small>
               </span>
             </MotionLink>
+            <MotionLink
+              href="/notices"
+              aria-current={isNotices ? "page" : undefined}
+              whileTap={reduceNavMotion ? undefined : { scale: 0.96 }}
+              whileFocus={reduceNavMotion ? undefined : { scale: 1.025 }}
+            >
+              {selectedNavTab === "notices" ? (
+                <motion.span className="global-nav-tab-indicator" layoutId="primary-nav-tab-selection" transition={reduceNavMotion ? { duration: 0.01 } : { type: "spring", stiffness: 470, damping: 38, mass: 0.72 }} />
+              ) : null}
+              <span className="global-nav-tab-label global-nav-tab-with-dot">{t("새소식", "Updates")}<NoticeUnreadDot /></span>
+            </MotionLink>
           </nav>
         </div>
         {/* 내 기록. 오른쪽 접이식 패널을 걷어내고 헤더 가운데로 올렸다. */}
@@ -208,6 +208,7 @@ export function LegacyShell({ children, showTypingChrome = true, wide = false }:
 
         <div className="global-nav-right">
           {isTyping ? <><AnalyticsMenu /><SettingsMenu /></> : null}
+          <FeedbackPanel />
           <AdminNavLink />
           <AuthButton />
         </div>
@@ -261,7 +262,6 @@ export function LegacyShell({ children, showTypingChrome = true, wide = false }:
         ) : children}
       </main>
 
-      <FabMail />
         <NicknameSetupModal />
       </div>
     </>
