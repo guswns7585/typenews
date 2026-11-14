@@ -2108,6 +2108,18 @@ body.bg-custom-gradient {
   text-transform: uppercase;
 }
 
+.global-nav-tab-with-dot { position: relative; }
+.global-nav-unread-dot {
+  position: absolute;
+  top: -3px;
+  right: -8px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #d84b62;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-surface, white) 76%, transparent);
+}
+
 .sub-nav-frosted {
   top: 56px;
   width: min(1064px, calc(100vw - 48px));

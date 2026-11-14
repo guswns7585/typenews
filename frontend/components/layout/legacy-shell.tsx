@@ -23,6 +23,7 @@ import { PreferencesSync } from "@/components/settings/preferences-sync";
 import { SettingsMenu } from "@/components/settings/settings-menu";
 import { AnalyticsMenu } from "@/components/settings/analytics-menu";
 import { TopBar } from "@/components/layout/top-bar";
+import { NoticeUnreadDot } from "@/components/notices/notice-unread-dot";
 import { useUiLanguage } from "@/lib/ui-language";
 import {
   applyBackgroundToBody,
@@ -57,9 +58,10 @@ export function LegacyShell({ children, showTypingChrome = true, wide = false }:
   const { locale, t } = useUiLanguage();
   const isTyping = pathname === "/";
   const isEvent = pathname === "/event";
+  const isNotices = pathname === "/notices";
   const isShowcase = pathname.startsWith("/showcase");
   const isAdmin = pathname.startsWith("/admin");
-  const selectedNavTab = isTyping ? "typing" : isEvent ? "event" : isShowcase ? "showcase" : null;
+  const selectedNavTab = isTyping ? "typing" : isEvent ? "event" : isNotices ? "notices" : isShowcase ? "showcase" : null;
   const reduceNavMotion = useReducedMotion();
   const isSpreadsheet = !isAdmin && visualTheme === "spreadsheet";
   const isVscode = !isAdmin && visualTheme === "vscode";
@@ -150,6 +152,17 @@ export function LegacyShell({ children, showTypingChrome = true, wide = false }:
                 />
               ) : null}
               <span className="global-nav-tab-label">{t("타이핑", "Typing")}</span>
+            </MotionLink>
+            <MotionLink
+              href="/notices"
+              aria-current={isNotices ? "page" : undefined}
+              whileTap={reduceNavMotion ? undefined : { scale: 0.96 }}
+              whileFocus={reduceNavMotion ? undefined : { scale: 1.025 }}
+            >
+              {selectedNavTab === "notices" ? (
+                <motion.span className="global-nav-tab-indicator" layoutId="primary-nav-tab-selection" transition={reduceNavMotion ? { duration: 0.01 } : { type: "spring", stiffness: 470, damping: 38, mass: 0.72 }} />
+              ) : null}
+              <span className="global-nav-tab-label global-nav-tab-with-dot">{t("새소식", "Updates")}<NoticeUnreadDot /></span>
             </MotionLink>
             <MotionLink
               href="/event"

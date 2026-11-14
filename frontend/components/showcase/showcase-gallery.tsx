@@ -1,6 +1,6 @@
 "use client";
 
-import { Bookmark, Heart, LoaderCircle } from "lucide-react";
+import { Bookmark, EyeOff, Heart, LoaderCircle } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { ShowcaseEditor } from "@/components/showcase/showcase-editor";
@@ -15,6 +15,7 @@ import { signedShowcaseUrl } from "@/features/showcase/media";
 import { readShowcaseDraft, type ShowcaseEditorDraft } from "@/features/showcase/audio-draft";
 import type { MyShowcaseItem, ShowcaseItem, ShowcaseSpace, ShowcaseSpaceView, ShowcaseViewItem } from "@/features/showcase/types";
 import { publicProfilePhotoUrl } from "@/features/profile/profile-photo";
+import { useAdminStatus } from "@/features/admin/use-admin-status";
 import { getSupabaseClient } from "@/lib/supabase/client";
 import { messageOf } from "@/lib/supabase/errors";
 import { useUiLanguage } from "@/lib/ui-language";
@@ -46,6 +47,7 @@ async function resolveItem(item: ShowcaseItem): Promise<ShowcaseViewItem> {
 export function ShowcaseGallery({ profileId = null }: { profileId?: string | null }) {
   const { t } = useUiLanguage();
   const { signedIn, authReady, profileId: myProfileId } = useAuthProfile();
+  const { isAdmin } = useAdminStatus();
   const [items, setItems] = useState<ShowcaseViewItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -191,6 +193,16 @@ export function ShowcaseGallery({ profileId = null }: { profileId?: string | nul
     if (kind === "bookmark" && activeBookmarkFilter && !result.active) setTotal((current) => Math.max(0, current - 1));
   }
 
+  async function hideItem(item: ShowcaseViewItem) {
+    if (!window.confirm(t(`“${item.title}”을 아카이브에서 즉시 숨길까요?`, `Hide “${item.title}” from the archive now?`))) return;
+    const supabase = getSupabaseClient();
+    if (!supabase) return;
+    const { error } = await supabase.rpc("admin_set_showcase_hidden", { p_item_id: item.item_id, p_hidden: true });
+    if (error) { setMessage(messageOf(error, t("항목을 숨기지 못했습니다", "Could not hide item"))); return; }
+    setItems((current) => current.filter((candidate) => candidate.item_id !== item.item_id));
+    setTotal((current) => Math.max(0, current - 1));
+  }
+
   const featuredItem = space?.featured_item_id ? items.find((item) => item.item_id === space.featured_item_id) : null;
   const canManage = signedIn && (!profileId || Boolean(space?.is_owner));
 
@@ -255,6 +267,7 @@ export function ShowcaseGallery({ profileId = null }: { profileId?: string | nul
         <div className={styles.grid}>
           {items.map((item) => (
             <article className={styles.card} key={item.item_id}>
+              {isAdmin ? <button type="button" className={styles.cardModerateButton} onClick={() => void hideItem(item)}><EyeOff size={14} />{t("숨김", "Hide")}</button> : null}
               <Link className={styles.cardImage} href={`/showcase/${item.item_id}`}>
                 {/* Private bucket URLs are short-lived and already point at optimized WebP files. */}
                 {/* eslint-disable-next-line @next/next/no-img-element */}

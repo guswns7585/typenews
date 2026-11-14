@@ -1,23 +1,28 @@
 "use client";
 
-import { Bookmark, Flag, Heart, LoaderCircle, Share2, X } from "lucide-react";
+import { Bookmark, EyeOff, Flag, Heart, LoaderCircle, Share2, ShieldAlert, Trash2, X } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { useAuthProfile } from "@/components/auth/auth-button";
 import { ShowcaseAudioPlayer } from "@/components/showcase/showcase-audio-player";
+import { ShowcaseComments } from "@/components/showcase/showcase-comments";
 import { ProfileDecorationLine } from "@/components/profile/profile-decoration-line";
 import { loadProfileDecorations, type ProfileDecoration } from "@/features/profile/decorations";
 import { signedShowcaseUrl } from "@/features/showcase/media";
 import { SHOWCASE_BUILD_FIELD_MAP, SHOWCASE_BUILD_SECTIONS, type ShowcaseItem, type ShowcaseViewItem } from "@/features/showcase/types";
 import { publicProfilePhotoUrl } from "@/features/profile/profile-photo";
+import { useAdminStatus } from "@/features/admin/use-admin-status";
 import { getSupabaseClient } from "@/lib/supabase/client";
 import { messageOf } from "@/lib/supabase/errors";
 import { useUiLanguage } from "@/lib/ui-language";
 import styles from "./showcase.module.css";
 
 export function ShowcaseDetail({ itemId }: { itemId: string }) {
+  const router = useRouter();
   const { isEnglish, t } = useUiLanguage();
   const { signedIn, authReady } = useAuthProfile();
+  const { isAdmin } = useAdminStatus();
   const [item, setItem] = useState<ShowcaseViewItem | null>(null);
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(true);
@@ -102,6 +107,22 @@ export function ShowcaseDetail({ itemId }: { itemId: string }) {
     }
   }
 
+  async function moderateItem(action: "hide" | "delete") {
+    if (!item) return;
+    const prompt = action === "delete"
+      ? t("사진과 타건음을 포함해 이 항목을 영구 삭제할까요?", "Permanently delete this item and its media?")
+      : t("이 항목을 즉시 아카이브에서 숨길까요?", "Hide this item from the archive now?");
+    if (!window.confirm(prompt)) return;
+    const supabase = getSupabaseClient();
+    if (!supabase) return;
+    const { error } = action === "delete"
+      ? await supabase.rpc("admin_delete_showcase_item", { p_item_id: item.item_id })
+      : await supabase.rpc("admin_set_showcase_hidden", { p_item_id: item.item_id, p_hidden: true });
+    if (error) { setMessage(messageOf(error, t("관리 작업에 실패했습니다", "Moderation failed"))); return; }
+    router.push("/showcase");
+    router.refresh();
+  }
+
   if (loading) return <div className={styles.loading}><LoaderCircle className={styles.spinning} />{t("불러오는 중", "Loading")}</div>;
   if (!item) return <div className={styles.empty}><strong>{message || t("아카이브 항목이 없습니다", "Archive item unavailable")}</strong><Link href="/showcase">{t("아카이브로 돌아가기", "Back to archive")}</Link></div>;
   const buildSections = SHOWCASE_BUILD_SECTIONS.map((section) => ({
@@ -112,6 +133,7 @@ export function ShowcaseDetail({ itemId }: { itemId: string }) {
   return (
     <article className={styles.detail}>
       <Link className={styles.backLink} href="/showcase">← {t("아카이브", "Archive")}</Link>
+      {isAdmin ? <aside className={styles.inlineModeration}><div><ShieldAlert size={17} /><span>{t("관리자 도구", "Moderator tools")}</span></div><button type="button" onClick={() => void moderateItem("hide")}><EyeOff size={15} />{t("즉시 숨김", "Hide")}</button><button type="button" data-danger="true" onClick={() => void moderateItem("delete")}><Trash2 size={15} />{t("영구 삭제", "Delete")}</button></aside> : null}
       <div className={styles.detailGrid}>
         <div className={styles.detailMedia}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -148,6 +170,7 @@ export function ShowcaseDetail({ itemId }: { itemId: string }) {
           })}</dl></section>
         ))}</div>
       </section> : null}
+      <ShowcaseComments itemId={item.item_id} />
       {reportOpen ? <ShowcaseReportDialog itemId={item.item_id} onClose={() => setReportOpen(false)} onReported={() => { setReportOpen(false); setMessage(t("관리자에게 검토를 요청했습니다", "Review requested")); }} /> : null}
     </article>
   );
