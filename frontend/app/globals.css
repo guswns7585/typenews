@@ -177,6 +177,29 @@
   line-height: 1.55;
 }
 
+.typing-speed-position {
+  display: grid;
+  grid-template-columns: minmax(150px, .55fr) minmax(0, 1fr);
+  align-items: center;
+  gap: 14px;
+  margin-top: 9px;
+  padding: 11px 13px;
+  border: 1px solid color-mix(in srgb, var(--color-primary) 22%, var(--color-divider-soft));
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--color-primary) 5%, transparent);
+}
+.typing-speed-position > div { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+.typing-speed-position > div span { font-size: 11px; color: var(--color-ink-muted-48); }
+.typing-speed-position > div strong { font-family: var(--font-display); font-size: 19px; white-space: nowrap; }
+.typing-speed-position p { display: flex; flex-direction: column; gap: 2px; margin: 0; padding-left: 14px; border-left: 1px solid var(--color-divider-soft); }
+.typing-speed-position p b { font-size: 12px; }
+.typing-speed-position p span { font-size: 10px; color: var(--color-ink-muted-48); }
+
+@media (max-width: 680px) {
+  .typing-speed-position { grid-template-columns: 1fr; gap: 8px; }
+  .typing-speed-position p { padding-top: 8px; padding-left: 0; border-top: 1px solid var(--color-divider-soft); border-left: 0; }
+}
+
 .analytics-modal .typing-analytics-comparison {
   justify-content: end;
   margin-top: 9px;

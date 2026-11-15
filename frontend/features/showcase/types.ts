@@ -57,6 +57,7 @@ export type ShowcaseItem = {
   audio_duration_ms: number | null;
   like_count: number;
   bookmark_count: number;
+  comment_count: number;
   liked_by_me: boolean;
   bookmarked_by_me: boolean;
   published_at: string;

@@ -1,6 +1,6 @@
 "use client";
 
-import { Bookmark, EyeOff, Heart, LoaderCircle, RotateCcw } from "lucide-react";
+import { Bookmark, EyeOff, Heart, LoaderCircle, MessageCircle, RotateCcw } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { ShowcaseEditor } from "@/components/showcase/showcase-editor";
@@ -8,6 +8,7 @@ import { ShowcaseManager } from "@/components/showcase/showcase-manager";
 import { ShowcaseSpaceEditor } from "@/components/showcase/showcase-space-editor";
 import { ShowcaseSpaceDirectory } from "@/components/showcase/showcase-space-directory";
 import { ShowcaseAudioPlayer } from "@/components/showcase/showcase-audio-player";
+import { LinkifiedText } from "@/components/common/linkified-text";
 import { ProfileDecorationLine } from "@/components/profile/profile-decoration-line";
 import { loadProfileDecorations, type ProfileDecoration } from "@/features/profile/decorations";
 import { useAuthProfile } from "@/components/auth/auth-button";
@@ -42,6 +43,7 @@ async function resolveItem(item: ShowcaseItem): Promise<ShowcaseViewItem> {
   if (!thumbnailUrl) throw new Error("Showcase image is unavailable");
   return {
     ...item,
+    comment_count: Number(item.comment_count ?? 0),
     imageUrl: thumbnailUrl,
     thumbnailUrl,
     audioUrl,
@@ -265,7 +267,7 @@ export function ShowcaseGallery({ profileId = null }: { profileId?: string | nul
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={space.profilePhotoUrl} alt="" />
               ) : space.display_name.slice(0, 1)}</span>
-              <div><h1>{space.display_name}<ProfileDecorationLine decoration={decorations.get(space.profile_id)} /></h1>{space.intro ? <p>{space.intro}</p> : null}</div>
+              <div><h1>{space.display_name}<ProfileDecorationLine decoration={decorations.get(space.profile_id)} /></h1>{space.intro ? <p><LinkifiedText text={space.intro} /></p> : null}</div>
             </div>
             <div className={styles.spaceStats}><span><strong>{space.keyboard_count}</strong>{t("키보드", "keyboards")}</span><span><strong>{space.total_likes}</strong>{t("받은 좋아요", "likes received")}</span></div>
             {space.is_owner ? <div className={styles.personalActions}><button type="button" className={styles.secondaryButton} onClick={() => setSpaceEditorOpen(true)}>{t("공간 정보 편집", "Edit space")}</button><button type="button" className={styles.secondaryButton} onClick={() => setManagerOpen(true)}>{t("키보드 관리", "Manage keyboards")}</button><button type="button" className={styles.primaryButton} onClick={() => { setEditingItem(null); setEditorOpen(true); }}>{t("키보드 추가", "Add keyboard")}</button></div> : null}
@@ -362,6 +364,10 @@ export function ShowcaseGallery({ profileId = null }: { profileId?: string | nul
                     <Bookmark size={16} fill={item.bookmarked_by_me ? "currentColor" : "none"} />
                     {item.bookmark_count}
                   </button>
+                  <Link href={`/showcase/${item.item_id}`} aria-label={t(`댓글 ${item.comment_count}개`, `${item.comment_count} comments`)}>
+                    <MessageCircle size={16} />
+                    {item.comment_count}
+                  </Link>
                 </div>
               </div>
             </article>

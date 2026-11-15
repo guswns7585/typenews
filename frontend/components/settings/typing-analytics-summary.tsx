@@ -11,6 +11,7 @@ type Daily = { day: string; typedChars: number; completions: number; avgCpm: num
 type Mode = { language: string; mode: string; completions: number; typedChars: number; avgCpm: number; avgAccuracy: number };
 type Weakness = { sentence_id: number; sentence_text: string; char_index: number; target_character: string; mistake_count: number; correction_count: number };
 type KeyUsage = { recent: Record<string, number>; total: Record<string, number> };
+type SpeedPosition = { avg_cpm: number; speed_rank: number; participant_count: number; top_percent: number; completions: number };
 
 const KEY_ROWS = [
   ["Backquote", "Digit1", "Digit2", "Digit3", "Digit4", "Digit5", "Digit6", "Digit7", "Digit8", "Digit9", "Digit0", "Minus", "Equal", "Backspace"],
@@ -70,6 +71,7 @@ export function TypingAnalyticsSummary({ signedIn }: { signedIn: boolean }) {
   const [modes, setModes] = useState<Mode[]>([]);
   const [weaknesses, setWeaknesses] = useState<Weakness[]>([]);
   const [keyUsage, setKeyUsage] = useState<KeyUsage>({ recent: {}, total: {} });
+  const [speedPosition, setSpeedPosition] = useState<SpeedPosition | null>(null);
   const [keyRange, setKeyRange] = useState<"recent" | "total">("recent");
   const [loading, setLoading] = useState(true);
 
@@ -82,7 +84,8 @@ export function TypingAnalyticsSummary({ signedIn }: { signedIn: boolean }) {
       supabase.rpc("get_my_typing_analytics", { p_days: 30 }),
       supabase.rpc("get_my_typing_weaknesses", { p_limit: 12 }),
       supabase.rpc("get_my_key_usage", { p_days: 30 }),
-    ]).then(([analyticsResult, weaknessResult, keyResult]) => {
+      supabase.rpc("get_my_typing_speed_position", { p_days: 30, p_min_completions: 20 }),
+    ]).then(([analyticsResult, weaknessResult, keyResult, speedResult]) => {
       if (!active) return;
       if (!analyticsResult.error) {
         const payload = analyticsResult.data as { summary?: Summary; comparison?: Comparison; daily?: Daily[]; modes?: Mode[] } | null;
@@ -90,6 +93,7 @@ export function TypingAnalyticsSummary({ signedIn }: { signedIn: boolean }) {
       }
       if (!weaknessResult.error) setWeaknesses((weaknessResult.data ?? []) as Weakness[]);
       if (!keyResult.error && keyResult.data) setKeyUsage(keyResult.data as KeyUsage);
+      if (!speedResult.error) setSpeedPosition(((speedResult.data ?? []) as SpeedPosition[])[0] ?? null);
       setLoading(false);
     });
     return () => { active = false; };
@@ -132,6 +136,10 @@ export function TypingAnalyticsSummary({ signedIn }: { signedIn: boolean }) {
           <div><Flame size={16} /><span>{t("연속 이용일", "Current streak")}</span><strong>{summary?.streak ?? 0}{t("일", "d")}</strong></div>
         </div>
         <p className="analytics-insight">{insight}</p>
+        <div className="typing-speed-position">
+          <div><span>{t("최근 30일 타속 위치", "30-day speed position")}</span><strong>{speedPosition ? t(`상위 ${speedPosition.top_percent}%`, `Top ${speedPosition.top_percent}%`) : "--"}</strong></div>
+          {speedPosition ? <p><b>{t(`${speedPosition.participant_count.toLocaleString()}명 중 ${speedPosition.speed_rank.toLocaleString()}위`, `${speedPosition.speed_rank.toLocaleString()} of ${speedPosition.participant_count.toLocaleString()} users`)}</b><span>{t(`평균 ${speedPosition.avg_cpm} CPM · ${speedPosition.completions.toLocaleString()}회 완주`, `Average ${speedPosition.avg_cpm} CPM · ${speedPosition.completions.toLocaleString()} completions`)}</span></p> : <p><span>{t("최근 30일 20회 이상 완주하면 위치가 표시됩니다.", "Complete at least 20 runs in 30 days to see your position.")}</span></p>}
+        </div>
         <div className="typing-analytics-comparison"><span>{t("이전 30일 대비", "Versus previous 30 days")}</span><div>{t("타건", "Keys")}{change(comparison?.typedChars)}</div><div>CPM{change(comparison?.avgCpm, "")}</div><div>{t("정확도", "Accuracy")}{change(comparison?.avgAccuracy, t("%p", "pt"))}</div></div>
       </section>
 

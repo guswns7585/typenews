@@ -12,6 +12,8 @@
 .personalIdentity { display: flex; min-width: 0; align-items: flex-start; gap: 18px; }
 .personalIdentity h1 { margin: 2px 0 0; font-family: var(--font-display); font-size: clamp(30px, 3.5vw, 46px); line-height: 1.05; }
 .personalIdentity p { max-width: 650px; margin: 10px 0 0; line-height: 1.65; white-space: pre-wrap; opacity: .78; }
+.personalIdentity p a { color: inherit; text-decoration: underline; text-decoration-color: color-mix(in srgb, currentColor 42%, transparent); text-underline-offset: 3px; overflow-wrap: anywhere; }
+.personalIdentity p a:hover { color: var(--color-primary); text-decoration-color: currentColor; }
 .personalHero .eyebrow { color: currentColor; opacity: .58; }
 .personalAvatar { display: grid; width: 72px; height: 72px; flex: 0 0 72px; overflow: hidden; place-items: center; border: 2px solid rgba(255,255,255,.44); border-radius: 50%; background: var(--typenews-button); box-shadow: 0 5px 16px rgba(64,38,36,.14), var(--typenews-inset); font-size: 26px; font-weight: 800; }
 .personalAvatar img { width: 100%; height: 100%; object-fit: cover; }
@@ -105,7 +107,7 @@
 .audioPlayer input[type="range"]:disabled { opacity: .45; cursor: default; }
 .audioTime { color: var(--color-ink-muted-48); font-size: 10px; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .reactions, .detailActions { display: flex; align-items: center; gap: 6px; }
-.reactions button, .detailActions button { display: inline-flex; min-height: 30px; align-items: center; gap: 5px; padding: 4px 7px 4px 0; border: 0; color: var(--color-ink-muted-80); background: transparent; cursor: pointer; font: inherit; font-size: 12px; }
+.reactions button, .reactions a, .detailActions button { display: inline-flex; min-height: 30px; align-items: center; gap: 5px; padding: 4px 7px 4px 0; border: 0; color: var(--color-ink-muted-80); background: transparent; cursor: pointer; font: inherit; font-size: 12px; text-decoration: none; }
 .reactions button:disabled, .detailActions button:disabled { opacity: .45; cursor: default; }
 .reactions button[data-active="true"], .detailActions button[data-active="true"] { color: #b92f54; background: rgba(255,214,226,.42); }
 .loading, .empty { display: flex; min-height: 240px; align-items: center; justify-content: center; flex-direction: column; gap: 10px; border: 1px dashed rgba(255,255,255,.34); border-radius: var(--radius-lg); color: var(--color-ink-muted-80); background: rgba(255,255,255,.1); }
