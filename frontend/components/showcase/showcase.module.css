@@ -196,6 +196,43 @@
 .orderControls[data-visible="false"] { visibility: hidden; }
 .orderControls button { width: 30px; justify-content: center; padding-inline: 0; }
 
+.inventoryPanel { display: grid; gap: 16px; }
+.inventoryForm { display: grid; gap: 12px; padding: 16px; border: 1px solid rgba(92,67,68,.16); border-radius: var(--radius-sm); background: rgba(255,255,255,.13); }
+.inventoryForm > header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.inventoryForm > header > div { display: grid; gap: 3px; }
+.inventoryForm > header strong { font-size: 14px; }
+.inventoryForm > header span { color: var(--color-ink-muted-48); font-size: 10px; }
+.inventoryForm > header button { border: 0; color: var(--color-primary); background: transparent; cursor: pointer; font: inherit; font-size: 11px; }
+.inventoryFields { display: grid; grid-template-columns: 110px minmax(180px,1.3fr) minmax(130px,1fr) 90px; gap: 10px; }
+.inventoryFields label { display: grid; min-width: 0; gap: 5px; color: var(--color-ink-muted-80); font-size: 10px; font-weight: 700; }
+.inventoryFields input, .inventoryFields select { width: 100%; min-width: 0; box-sizing: border-box; padding: 8px 9px; border: 1px solid rgba(92,67,68,.22); border-radius: var(--radius-sm); color: var(--color-ink); background: rgba(255,255,255,.34); font: inherit; }
+.inventoryNotes { grid-column: span 2; }
+.inventoryPublic { display: flex !important; align-items: center; grid-template-columns: auto 1fr; align-self: end; min-height: 36px; }
+.inventoryPublic input { width: auto; }
+.inventoryForm > .primaryButton { justify-self: end; }
+.inventoryToolbar { display: flex; align-items: center; justify-content: space-between; }
+.inventoryToolbar > div { display: flex; gap: 5px; }
+.inventoryToolbar button { min-height: 32px; padding: 5px 10px; border: 1px solid rgba(92,67,68,.14); border-radius: var(--radius-pill); color: var(--color-ink-muted-72); background: transparent; cursor: pointer; font: inherit; font-size: 10px; }
+.inventoryToolbar button[data-active="true"] { color: var(--color-ink); background: var(--typenews-button); box-shadow: var(--typenews-inset); font-weight: 700; }
+.inventoryList { display: grid; gap: 7px; }
+.inventoryList article { display: flex; min-width: 0; align-items: center; justify-content: space-between; gap: 12px; padding: 11px 13px; border-bottom: 1px solid rgba(100,70,70,.12); }
+.inventoryList article > div:first-child { display: grid; min-width: 0; gap: 3px; }
+.inventoryList b { font-size: 12px; }
+.inventoryList span, .inventoryList small { color: var(--color-ink-muted-48); font-size: 10px; overflow-wrap: anywhere; }
+.inventoryList article > div:last-child { display: flex; gap: 4px; }
+.inventoryList button { display: inline-flex; align-items: center; gap: 4px; padding: 5px 7px; border: 0; border-radius: var(--radius-pill); color: var(--color-ink-muted-72); background: rgba(255,255,255,.22); cursor: pointer; font: inherit; font-size: 10px; }
+.inventoryEmpty { display: grid; min-height: 160px; place-items: center; color: var(--color-ink-muted-48); font-size: 11px; }
+.publicInventory { margin: 18px 0 28px; padding: 18px 20px; border: 1px solid rgba(255,255,255,.34); border-radius: var(--radius-lg); background: rgba(255,255,255,.12); box-shadow: var(--typenews-inset); }
+.publicInventory > header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 13px; }
+.publicInventory h2 { margin: 0; font-family: var(--font-display); font-size: 19px; }
+.publicInventory header > div { display: flex; gap: 4px; }
+.publicInventory button { min-height: 30px; padding: 4px 9px; border: 1px solid rgba(92,67,68,.14); border-radius: var(--radius-pill); color: var(--color-ink-muted-72); background: transparent; cursor: pointer; font: inherit; font-size: 10px; }
+.publicInventory button[data-active="true"] { color: var(--color-ink); background: var(--typenews-button); box-shadow: var(--typenews-inset); font-weight: 700; }
+.publicInventory > div { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 8px; }
+.publicInventory article { display: grid; min-width: 0; gap: 3px; padding: 10px 11px; border-radius: var(--radius-sm); background: rgba(255,255,255,.14); }
+.publicInventory article strong { overflow: hidden; font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+.publicInventory article span, .publicInventory article small { color: var(--color-ink-muted-48); font-size: 9px; overflow-wrap: anywhere; }
+
 .detail { padding-top: 8px; }
 .inlineModeration { display: flex; align-items: center; gap: 8px; margin: -4px 0 16px; padding: 9px 10px 9px 13px; border: 1px solid rgba(166,81,84,.24); border-radius: var(--radius-sm); background: rgba(255,239,239,.38); }
 .inlineModeration > div { display: flex; align-items: center; gap: 7px; margin-right: auto; font-size: 12px; font-weight: 750; }
@@ -219,6 +256,16 @@
 .buildDocument h3 { margin: 0 0 8px; color: var(--color-ink-muted-80); font-size: 12px; font-weight: 750; }
 .buildDocument .buildList { margin-bottom: 0; }
 .buildDocument .buildList div:last-child { border-bottom: 0; }
+.buildHistory { margin-top: 24px; padding: 20px; border: 1px solid rgba(255,255,255,.34); border-radius: var(--radius-lg); background: var(--typenews-glass); box-shadow: var(--typenews-panel-shadow), var(--typenews-inset); backdrop-filter: blur(16px); }
+.buildHistory > header { display: flex; align-items: center; gap: 8px; }
+.buildHistory h2 { margin: 0; font-family: var(--font-display); font-size: 21px; }
+.buildHistory > header span { color: var(--color-ink-muted-48); font-size: 11px; }
+.buildHistory ol { display: grid; gap: 0; margin: 16px 0 0; padding: 0; list-style: none; }
+.buildHistory li { display: grid; grid-template-columns: 110px 1fr; gap: 16px; padding: 12px 0; border-top: 1px solid rgba(100,70,70,.12); }
+.buildHistory time { color: var(--color-ink-muted-48); font-size: 10px; }
+.buildHistory li > div { min-width: 0; }
+.buildHistory strong { font-size: 12px; }
+.buildHistory p { margin: 5px 0 0; color: var(--color-ink-muted-72); font-size: 11px; line-height: 1.65; white-space: pre-wrap; overflow-wrap: anywhere; }
 .buildList { display: grid; margin: 0 0 18px; }
 .buildList div { display: grid; grid-template-columns: 90px 1fr; gap: 10px; padding: 9px 0; border-bottom: 1px solid rgba(100,70,70,.12); }
 .buildList dt { color: var(--color-ink-muted-48); font-size: 11px; font-weight: 800; }
@@ -326,10 +373,14 @@
   .sectionHeading { align-items: flex-start; flex-direction: column; gap: 3px; }
   .managerToolbar { align-items: stretch; flex-direction: column; }
   .managerToolbar > div { display: grid; }
+  .inventoryFields { grid-template-columns: 1fr 1fr; }
+  .inventoryNotes { grid-column: 1 / -1; }
   .collageOptions { grid-template-columns: 1fr 1fr; }
   .collageAuthor { grid-column: 1 / -1; }
   .managerItem { grid-template-columns: 100px minmax(0, 1fr); }
   .managerActions { grid-column: 1 / -1; justify-content: flex-start; flex-wrap: wrap; }
+  .buildHistory li { grid-template-columns: 1fr; gap: 4px; }
+  .publicInventory > div { grid-template-columns: 1fr; }
 }
 @media (prefers-reduced-motion: reduce) {
   .card, .cardImage img, .spaceCard, .spaceCardBanner > img { transition: none; }

@@ -7,6 +7,7 @@ import { useEffect, useRef, useState } from "react";
 import { useAuthProfile } from "@/components/auth/auth-button";
 import { ShowcaseAudioPlayer } from "@/components/showcase/showcase-audio-player";
 import { ShowcaseComments } from "@/components/showcase/showcase-comments";
+import { ShowcaseBuildHistory } from "@/components/showcase/showcase-build-history";
 import { ProfileDecorationLine } from "@/components/profile/profile-decoration-line";
 import { loadProfileDecorations, type ProfileDecoration } from "@/features/profile/decorations";
 import { signedShowcaseUrl } from "@/features/showcase/media";
@@ -138,6 +139,12 @@ export function ShowcaseDetail({ itemId }: { itemId: string }) {
     ...section,
     fields: section.fields.filter((key) => item.build_info[key]),
   })).filter((section) => section.fields.length);
+  const buildValue = (key: keyof typeof item.build_info) => {
+    const value = item.build_info[key];
+    if (key !== "buildStatus") return value;
+    const labels: Record<string, [string, string]> = { planned: ["계획", "Planned"], parts: ["부품 준비", "Parts ready"], building: ["조립 중", "Building"], completed: ["완성", "Completed"], stored: ["보관", "Stored"], sold: ["판매·정리", "Sold"] };
+    return value && labels[value] ? t(...labels[value]) : value;
+  };
 
   return (
     <article className={styles.detail}>
@@ -179,10 +186,11 @@ export function ShowcaseDetail({ itemId }: { itemId: string }) {
         <div className={styles.buildDocument}>{buildSections.map((section) => (
           <section key={section.id}><h3>{isEnglish ? section.labelEn : section.label}</h3><dl className={styles.buildList}>{section.fields.map((key) => {
             const field = SHOWCASE_BUILD_FIELD_MAP[key];
-            return <div key={key}><dt>{isEnglish ? field.labelEn : field.label}</dt><dd>{item.build_info[key]}</dd></div>;
+            return <div key={key}><dt>{isEnglish ? field.labelEn : field.label}</dt><dd>{buildValue(key)}</dd></div>;
           })}</dl></section>
         ))}</div>
       </section> : null}
+      <ShowcaseBuildHistory itemId={item.item_id} />
       <ShowcaseComments itemId={item.item_id} onCountChange={setCommentCount} />
       {reportOpen ? <ShowcaseReportDialog itemId={item.item_id} onClose={() => setReportOpen(false)} onReported={() => { setReportOpen(false); setMessage(t("관리자에게 검토를 요청했습니다", "Review requested")); }} /> : null}
     </article>

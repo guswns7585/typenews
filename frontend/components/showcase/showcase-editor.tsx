@@ -6,7 +6,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { ShowcaseAudioPlayer } from "@/components/showcase/showcase-audio-player";
 import { removeShowcaseDraft, saveShowcaseDraft, type ShowcaseEditorDraft } from "@/features/showcase/audio-draft";
 import { inspectShowcaseAudio, prepareShowcaseImage, SHOWCASE_BUCKET } from "@/features/showcase/media";
-import { SHOWCASE_BUILD_FIELD_MAP, SHOWCASE_BUILD_SECTIONS, type MyShowcaseItem, type ShowcaseBuildInfo, type ShowcaseBuildKey } from "@/features/showcase/types";
+import { SHOWCASE_BUILD_FIELD_MAP, SHOWCASE_BUILD_SECTIONS, type MyShowcaseItem, type ShowcaseBuildInfo, type ShowcaseBuildKey, type ShowcaseInventoryItem } from "@/features/showcase/types";
 import { getSupabaseClient } from "@/lib/supabase/client";
 import { messageOf } from "@/lib/supabase/errors";
 import { useUiLanguage } from "@/lib/ui-language";
@@ -32,12 +32,22 @@ export function ShowcaseEditor({ item, restoredDraft, onClose, onSaved }: Props)
   const keyxifSnapshot = restoredDraft?.keyxifSnapshot ?? sourceItem?.keyxif_snapshot ?? null;
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
+  const [inventory, setInventory] = useState<ShowcaseInventoryItem[]>([]);
+  const [historyNote, setHistoryNote] = useState("");
   const editing = Boolean(sourceItem);
   const localImageUrl = useMemo(() => image ? URL.createObjectURL(image) : null, [image]);
   const audioPreview = useMemo(() => audio ? URL.createObjectURL(audio) : null, [audio]);
   const imagePreview = localImageUrl ?? sourceItem?.thumbnailUrl ?? null;
 
   useEffect(() => { dialogRef.current?.showModal(); }, []);
+  useEffect(() => {
+    const supabase = getSupabaseClient();
+    if (!supabase) return;
+    void Promise.resolve().then(async () => {
+      const { data } = await supabase.rpc("get_my_showcase_inventory");
+      setInventory((data ?? []) as ShowcaseInventoryItem[]);
+    });
+  }, []);
   useEffect(() => () => { if (localImageUrl) URL.revokeObjectURL(localImageUrl); }, [localImageUrl]);
   useEffect(() => () => { if (audioPreview) URL.revokeObjectURL(audioPreview); }, [audioPreview]);
   const close = () => {
@@ -120,6 +130,13 @@ export function ShowcaseEditor({ item, restoredDraft, onClose, onSaved }: Props)
       }
       if (!itemId || !profileId) throw new Error(t("항목 정보를 확인할 수 없습니다", "Archive item is unavailable"));
 
+      const linkedInventoryIds = inventory.filter((entry) => {
+        const selectedName = entry.category === "keycap" ? cleanBuild.keycaps : cleanBuild.switches;
+        return selectedName?.localeCompare(entry.name, undefined, { sensitivity: "accent" }) === 0;
+      }).map((entry) => entry.id);
+      const linkResult = await supabase.rpc("set_my_showcase_item_inventory", { p_item_id: itemId, p_inventory_ids: linkedInventoryIds });
+      if (linkResult.error && !/schema cache|Could not find the function/i.test(linkResult.error.message)) console.error("보유 장비 연결 실패", linkResult.error);
+
       const base = `${profileId}/${itemId}`;
       /* 수정 업로드는 기존 파일을 덮어쓰지 않는다. DB 저장이 끝나기 전에
          브라우저가 닫히거나 RPC가 실패해도 공개 중인 사진/소리가 보존되고,
@@ -157,6 +174,10 @@ export function ShowcaseEditor({ item, restoredDraft, onClose, onSaved }: Props)
       if (!editing) {
         const { error } = await supabase.rpc("publish_my_showcase_item", { p_item_id: itemId });
         if (error) throw error;
+      }
+      if (editing && historyNote.trim()) {
+        const { error } = await supabase.rpc("add_my_showcase_build_event", { p_item_id: itemId, p_event_date: new Date().toISOString().slice(0, 10), p_title: t("빌드 변경", "Build update"), p_details: historyNote.trim(), p_is_public: true });
+        if (error) console.error("빌드 변경 기록 저장 실패", error);
       }
       if (editing) {
         const replacedPaths = [
@@ -208,12 +229,17 @@ export function ShowcaseEditor({ item, restoredDraft, onClose, onSaved }: Props)
                 <h4>{isEnglish ? section.labelEn : section.label}</h4>
                 <div className={styles.buildGrid}>{section.fields.map((key) => {
                   const field = SHOWCASE_BUILD_FIELD_MAP[key];
-                  return <label key={key}><span>{isEnglish ? field.labelEn : field.label}</span><input maxLength={240} value={build[key] ?? ""} onChange={(event) => setBuildField(key, event.target.value)} /></label>;
+                  const inventoryCategory = key === "keycaps" ? "keycap" : key === "switches" ? "switch" : null;
+                  const isDate = key === "purchaseDate" || key === "receivedDate" || key === "completedDate" || key === "buildDate";
+                  return <label key={key}><span>{isEnglish ? field.labelEn : field.label}</span>{key === "buildStatus" ? <select value={build[key] ?? ""} onChange={(event) => setBuildField(key, event.target.value)}><option value="">-</option><option value="planned">{t("계획", "Planned")}</option><option value="parts">{t("부품 준비", "Parts ready")}</option><option value="building">{t("조립 중", "Building")}</option><option value="completed">{t("완성", "Completed")}</option><option value="stored">{t("보관", "Stored")}</option><option value="sold">{t("판매·정리", "Sold")}</option></select> : <input type={isDate ? "date" : "text"} maxLength={240} list={inventoryCategory ? `showcase-${inventoryCategory}-options` : undefined} value={build[key] ?? ""} onChange={(event) => setBuildField(key, event.target.value)} />}</label>;
                 })}</div>
               </section>
             ))}</div>
+            <datalist id="showcase-keycap-options">{inventory.filter((item) => item.category === "keycap").map((item) => <option key={item.id} value={item.name}>{item.brand}</option>)}</datalist>
+            <datalist id="showcase-switch-options">{inventory.filter((item) => item.category === "switch").map((item) => <option key={item.id} value={item.name}>{item.brand}</option>)}</datalist>
           </section>
           <label className={styles.fieldWide}><span>{t("빌드 노트", "Build notes")}</span><textarea maxLength={3000} rows={7} value={description} onChange={(event) => setDescription(event.target.value)} placeholder={t("조립 기록, 변경 내역, 사용 후기", "Build notes, changes, impressions")} /><small>{description.length} / 3000</small></label>
+          {editing ? <label className={styles.fieldWide}><span>{t("이번 변경 기록 · 선택", "Change log · optional")}</span><textarea maxLength={2000} rows={3} value={historyNote} onChange={(event) => setHistoryNote(event.target.value)} placeholder={t("예: 보강판을 PC로 교체하고 흡음재를 제거함", "Example: Changed to a PC plate and removed foam")} /><small>{historyNote.length} / 2000</small></label> : null}
         </div>
         {message ? <p className={styles.formMessage} aria-live="polite">{message}</p> : null}
         <footer className={styles.editorActions}><button type="button" className={styles.secondaryButton} disabled={busy} onClick={close}>{t("취소", "Cancel")}</button><button type="submit" className={styles.primaryButton} disabled={busy || !title.trim() || (!editing && !image)}>{busy ? <LoaderCircle className={styles.spinning} size={16} /> : null}{busy ? t("저장 중", "Saving") : editing ? t("수정 저장", "Save changes") : t("아카이브에 공개", "Publish to archive")}</button></footer>

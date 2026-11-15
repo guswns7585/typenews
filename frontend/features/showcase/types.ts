@@ -1,4 +1,10 @@
 export const SHOWCASE_BUILD_FIELDS = [
+  ["brand", "브랜드", "Brand"],
+  ["model", "모델", "Model"],
+  ["buildStatus", "진행 상태", "Build status"],
+  ["purchaseDate", "구매일", "Purchase date"],
+  ["receivedDate", "수령일", "Received date"],
+  ["completedDate", "완성일", "Completion date"],
   ["buildDate", "빌드일", "Build date"],
   ["case", "하우징", "Case"],
   ["pcb", "기판", "PCB"],
@@ -23,13 +29,36 @@ export const SHOWCASE_BUILD_FIELDS = [
 export type ShowcaseBuildKey = (typeof SHOWCASE_BUILD_FIELDS)[number][0];
 export type ShowcaseBuildInfo = Partial<Record<ShowcaseBuildKey, string>>;
 
+export type ShowcaseInventoryItem = {
+  id: string;
+  profile_id: string;
+  category: "keycap" | "switch";
+  name: string;
+  brand: string;
+  quantity: number;
+  ownership_status: "ordered" | "owned" | "sold";
+  acquired_at: string | null;
+  notes: string;
+  is_public: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
+export type ShowcaseBuildEvent = {
+  event_id: number;
+  event_date: string;
+  title: string;
+  details: string;
+  build_snapshot: ShowcaseBuildInfo;
+};
+
 export const SHOWCASE_BUILD_SECTIONS: ReadonlyArray<{
   id: string;
   label: string;
   labelEn: string;
   fields: readonly ShowcaseBuildKey[];
 }> = [
-  { id: "record", label: "제작 정보", labelEn: "Build details", fields: ["buildDate"] },
+  { id: "record", label: "기본 기록", labelEn: "Record", fields: ["brand", "model", "buildStatus", "purchaseDate", "receivedDate", "completedDate", "buildDate"] },
   { id: "core", label: "주요 부품", labelEn: "Main components", fields: ["case", "pcb", "plate", "mounting", "layout", "weight"] },
   { id: "input", label: "스위치·키캡", labelEn: "Switches & keycaps", fields: ["switches", "switchMods", "keycaps", "stabilizers", "stabilizerMods"] },
   { id: "tuning", label: "세팅·튜닝", labelEn: "Setup & tuning", fields: ["foam", "mods", "firmware", "cable"] },

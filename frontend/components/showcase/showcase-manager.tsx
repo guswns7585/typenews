@@ -3,6 +3,7 @@
 import { LoaderCircle, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createShowcaseCollage } from "@/features/showcase/collage";
+import { ShowcaseInventoryPanel } from "@/components/showcase/showcase-inventory-panel";
 import { signedShowcaseUrl, SHOWCASE_BUCKET } from "@/features/showcase/media";
 import type { MyShowcaseItem, MyShowcaseViewItem } from "@/features/showcase/types";
 import { getSupabaseClient } from "@/lib/supabase/client";
@@ -26,6 +27,7 @@ export function ShowcaseManager({ onClose, onAdd, onEdit, onChanged }: Props) {
   const [busyId, setBusyId] = useState<string | null>(null);
   const [collageBusy, setCollageBusy] = useState(false);
   const [message, setMessage] = useState("");
+  const [inventoryOpen, setInventoryOpen] = useState(false);
 
   const load = useCallback(async () => {
     const supabase = getSupabaseClient();
@@ -116,17 +118,17 @@ export function ShowcaseManager({ onClose, onAdd, onEdit, onChanged }: Props) {
       <section className={styles.managerInner}>
         <header className={styles.editorHeader}><div><h2>{t("내 아카이브 관리", "Manage my archive")}</h2></div><button type="button" className={styles.iconButton} onClick={onClose} aria-label={t("닫기", "Close")}><X size={19} /></button></header>
         <div className={styles.managerToolbar}>
-          <strong>{items.length} / 10</strong>
-          <div><button type="button" className={styles.secondaryButton} disabled={collageBusy || !selected.size} onClick={() => void saveCollage()}>{collageBusy ? <LoaderCircle className={styles.spinning} size={16} /> : null}{t(`콜라주 저장 (${selected.size})`, `Download collage (${selected.size})`)}</button><button type="button" className={styles.primaryButton} disabled={items.length >= 10} onClick={onAdd}>{t("키보드 추가", "Add keyboard")}</button></div>
+          <strong>{inventoryOpen ? t("키캡·스위치 보유 목록", "Keycap & switch inventory") : `${items.length} / 30`}</strong>
+          <div><button type="button" className={styles.secondaryButton} data-active={inventoryOpen} onClick={() => setInventoryOpen((current) => !current)}>{inventoryOpen ? t("키보드 관리", "Keyboards") : t("보유 장비", "Inventory")}</button>{!inventoryOpen ? <><button type="button" className={styles.secondaryButton} disabled={collageBusy || !selected.size} onClick={() => void saveCollage()}>{collageBusy ? <LoaderCircle className={styles.spinning} size={16} /> : null}{t(`콜라주 저장 (${selected.size})`, `Download collage (${selected.size})`)}</button><button type="button" className={styles.primaryButton} disabled={items.length >= 30} onClick={onAdd}>{t("키보드 추가", "Add keyboard")}</button></> : null}</div>
         </div>
-        {items.length ? <section className={styles.collageOptions} aria-label={t("콜라주 설정", "Collage settings")}>
+        {!inventoryOpen && items.length ? <section className={styles.collageOptions} aria-label={t("콜라주 설정", "Collage settings")}>
           <label><span>{t("배경", "Theme")}</span><select value={collageTheme} onChange={(event) => setCollageTheme(event.target.value as "light" | "dark")}><option value="light">{t("밝게", "Light")}</option><option value="dark">{t("어둡게", "Dark")}</option></select></label>
           <label><span>{t("사진 맞춤", "Image fit")}</span><select value={collageFit} onChange={(event) => setCollageFit(event.target.value as "cover" | "contain")}><option value="cover">{t("영역 채우기", "Fill")}</option><option value="contain">{t("사진 전체", "Show all")}</option></select></label>
           <label className={styles.collageAuthor}><span>{t("작성자 · 선택", "Author · optional")}</span><input maxLength={60} value={collageAuthor} onChange={(event) => setCollageAuthor(event.target.value)} placeholder={t("표시 이름", "Display name")} /></label>
           <label className={styles.collageCheck}><input type="checkbox" checked={collageCaptions} onChange={(event) => setCollageCaptions(event.target.checked)} />{t("키보드 이름 표시", "Show keyboard names")}</label>
         </section> : null}
         {message ? <p className={styles.formMessage}>{message}</p> : null}
-        {loading ? <div className={styles.loading}><LoaderCircle className={styles.spinning} /></div> : items.length ? (
+        {inventoryOpen ? <ShowcaseInventoryPanel /> : loading ? <div className={styles.loading}><LoaderCircle className={styles.spinning} /></div> : items.length ? (
           <div className={styles.managerList}>{items.map((item) => (
             <article className={styles.managerItem} key={item.id}>
               <label className={styles.selection}><input type="checkbox" checked={selected.has(item.id)} disabled={!item.thumbnailUrl} onChange={(event) => selectForCollage(item.id, event.target.checked)} /><span className={styles.managerThumb}>{item.thumbnailUrl ? (

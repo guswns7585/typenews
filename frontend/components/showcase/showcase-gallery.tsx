@@ -7,6 +7,7 @@ import { ShowcaseEditor } from "@/components/showcase/showcase-editor";
 import { ShowcaseManager } from "@/components/showcase/showcase-manager";
 import { ShowcaseSpaceEditor } from "@/components/showcase/showcase-space-editor";
 import { ShowcaseSpaceDirectory } from "@/components/showcase/showcase-space-directory";
+import { ShowcaseSpaceInventory } from "@/components/showcase/showcase-space-inventory";
 import { ShowcaseAudioPlayer } from "@/components/showcase/showcase-audio-player";
 import { LinkifiedText } from "@/components/common/linkified-text";
 import { ProfileDecorationLine } from "@/components/profile/profile-decoration-line";
@@ -292,6 +293,8 @@ export function ShowcaseGallery({ profileId = null }: { profileId?: string | nul
           }}>{t("키보드 등록", "Add keyboard")}</button> : null}
         </div>
       </header>}
+
+      {profileId && space ? <ShowcaseSpaceInventory profileId={space.profile_id} /> : null}
 
       {!profileId && isAdmin && hiddenPanelOpen ? <section className={styles.hiddenAdminPanel}>
         <header><div><strong>{t("숨김 항목", "Hidden items")}</strong><span>{hiddenItems.length}</span></div><button type="button" className={styles.textButton} disabled={hiddenLoading} onClick={() => void loadHiddenItems()}>{t("새로고침", "Refresh")}</button></header>
