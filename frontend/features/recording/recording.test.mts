@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { afterEach, test } from "node:test";
 import { startCapture } from "./capture";
-import { recorderFor } from "./media";
+import { MAX_BYTES, recorderFor } from "./media";
 import { trimRecording } from "./trim";
 
 const originals = new Map<string, PropertyDescriptor | undefined>();
@@ -113,6 +113,24 @@ test("MIME negotiation chooses a supported codec, then browser default", () => {
   assert.equal((recorderFor(stream) as unknown as { options: MediaRecorderOptions }).options.audioBitsPerSecond, 192_000);
   supported = "";
   assert.equal((recorderFor(stream) as unknown as { options: MediaRecorderOptions }).options.mimeType, undefined);
+});
+
+test("MIME negotiation prefers H.264 MP4 and broadly supported VP8 fallback", () => {
+  let supported = new Set(["video/mp4;codecs=avc1.42E01E,mp4a.40.2", "video/webm;codecs=vp8,opus"]);
+  globalValue("MediaRecorder", class {
+    static isTypeSupported(type: string) { return supported.has(type); }
+    constructor(public stream: MediaStream, public options: MediaRecorderOptions) {}
+  });
+  const stream = {} as MediaStream;
+  assert.equal((recorderFor(stream) as unknown as { options: MediaRecorderOptions }).options.mimeType,
+    "video/mp4;codecs=avc1.42E01E,mp4a.40.2");
+  supported = new Set(["video/webm;codecs=vp9,opus", "video/webm;codecs=vp8,opus"]);
+  assert.equal((recorderFor(stream) as unknown as { options: MediaRecorderOptions }).options.mimeType,
+    "video/webm;codecs=vp8,opus");
+});
+
+test("recording size stays below DCInside's decimal 50 MB limit", () => {
+  assert.ok(MAX_BYTES < 50_000_000);
 });
 
 test("a cancelled chooser's late cleanup preserves the next chooser handle", async () => {

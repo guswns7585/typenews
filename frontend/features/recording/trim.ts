@@ -1,4 +1,4 @@
-import { FPS, MAX_BYTES, MAX_SECONDS, recorderFor, stopTracks, waitForMedia } from "./media";
+import { finalizeRecordingBlob, FPS, MAX_BYTES, MAX_SECONDS, recorderFor, stopTracks, waitForMedia } from "./media";
 
 /** Decode and re-record only [start, end]; Blob slicing cannot trim encoded media. */
 export async function trimRecording(blob: Blob, start: number, end: number, signal: AbortSignal,
@@ -68,7 +68,7 @@ export async function trimRecording(blob: Blob, start: number, end: number, sign
       if (signal.aborted) { abort(); return; }
       recorder!.ondataavailable = ({ data }) => {
         bytes += data.size;
-        if (bytes > MAX_BYTES) { fail(new Error("내보내기 파일이 100 MB를 초과합니다. 구간을 줄여 주세요.")); return; }
+        if (bytes > MAX_BYTES) { fail(new Error("내보내기 파일이 50MB에 가까워졌습니다. 구간을 줄여 주세요.")); return; }
         if (data.size) chunks.push(data);
       };
       recorder!.onerror = () => fail(new Error("구간 내보내기에 실패했습니다."));
@@ -76,7 +76,8 @@ export async function trimRecording(blob: Blob, start: number, end: number, sign
         if (failed) return;
         if (!chunks.length) { reject(new Error("선택 구간에 영상이 없습니다.")); return; }
         onProgress(1);
-        resolve(new Blob(chunks, { type: recorder!.mimeType }));
+        const raw = new Blob(chunks, { type: recorder!.mimeType });
+        void finalizeRecordingBlob(raw, end - start).then(resolve).catch(() => reject(new Error("업로드 가능한 영상 파일로 마무리하지 못했습니다.")));
       };
       video.onended = finish;
       video.onerror = () => fail(new Error("영상을 재생할 수 없습니다."));

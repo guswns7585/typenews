@@ -1,4 +1,4 @@
-import { FPS, MAX_BYTES, MAX_SECONDS, recorderFor, stopTracks, waitForMedia } from "./media";
+import { finalizeRecordingBlob, FPS, MAX_BYTES, MAX_SECONDS, recorderFor, stopTracks, waitForMedia } from "./media";
 import { enhanceTypingAudio } from "./audio";
 import { buildWaveform } from "./waveform";
 
@@ -269,22 +269,27 @@ export async function startCapture(options: {
       if (!data.size || signal.aborted || failed) return;
       if (bytes + data.size > MAX_BYTES) {
         failed = true; stop();
-        options.onError(new Error("파일이 100 MB를 초과했습니다. 더 짧게 녹화해 주세요."));
+        options.onError(new Error("파일이 50MB에 가까워졌습니다. 더 짧게 녹화해 주세요."));
         return;
       }
       chunks.push(data); bytes += data.size;
       // Reserve room for the encoder's final data; never discard encoded chunks.
-      if (bytes >= MAX_BYTES - 2 * 1024 * 1024) stop("100 MB 제한에 근접해 녹화를 종료했습니다.");
+      if (bytes >= MAX_BYTES - 2 * 1024 * 1024) stop("50MB 제한에 근접해 녹화를 종료했습니다.");
     };
     recorder.onerror = () => { failed = true; stop(); if (!signal.aborted) options.onError(new Error("영상 인코딩에 실패했습니다.")); };
     recorder.onstop = () => {
       cleanup();
       if (failed || signal.aborted) return;
-      if (chunks.length) options.onComplete({
-        blob: new Blob(chunks, { type: recorder!.mimeType }),
-        duration: Math.min(MAX_SECONDS, ((ended || performance.now()) - started) / 1000), notice,
-        waveform: buildWaveform(waveformSamples),
-      });
+      if (chunks.length) {
+        const duration = Math.min(MAX_SECONDS, ((ended || performance.now()) - started) / 1000);
+        const raw = new Blob(chunks, { type: recorder!.mimeType });
+        void finalizeRecordingBlob(raw, duration)
+          .then((blob) => options.onComplete({
+            blob, duration, notice,
+            waveform: buildWaveform(waveformSamples),
+          }))
+          .catch(() => options.onError(new Error("업로드 가능한 영상 파일로 마무리하지 못했습니다. 다시 녹화해 주세요.")));
+      }
       else if (!signal.aborted) options.onError(new Error(notice || "영상 프레임이 저장되지 않았습니다. 탭을 화면에 표시한 상태에서 다시 녹화해 주세요."));
     };
     recorder.start(250);

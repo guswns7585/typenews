@@ -1,15 +1,31 @@
+import fixWebmDuration from "fix-webm-duration";
+
 export const MAX_SECONDS = 300;
-export const MAX_BYTES = 100 * 1024 * 1024;
+// DCInside accepts files up to 50 MB. Keep a little headroom for differences
+// between decimal and binary size calculation and final encoder metadata.
+export const MAX_BYTES = 47 * 1024 * 1024;
 export const FPS = 30;
 
 export function recorderFor(stream: MediaStream): MediaRecorder {
-  const types = ["video/webm;codecs=vp9,opus", "video/webm;codecs=vp8,opus", "video/webm", "video/mp4"];
+  const types = [
+    "video/mp4;codecs=avc1.42E01E,mp4a.40.2",
+    "video/mp4",
+    "video/webm;codecs=vp8,opus",
+    "video/webm;codecs=vp9,opus",
+    "video/webm",
+  ];
   const mimeType = types.find((type) => MediaRecorder.isTypeSupported(type));
   return new MediaRecorder(stream, {
     ...(mimeType ? { mimeType } : {}),
     videoBitsPerSecond: 4_000_000,
     audioBitsPerSecond: 192_000,
   });
+}
+
+/** Chromium WebM recordings can omit Duration, which some uploaders reject. */
+export async function finalizeRecordingBlob(blob: Blob, durationSeconds: number) {
+  if (!blob.type.toLowerCase().includes("webm")) return blob;
+  return fixWebmDuration(blob, Math.max(100, durationSeconds * 1000), { logger: false });
 }
 
 export function stopTracks(stream?: MediaStream) {
