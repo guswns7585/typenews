@@ -3376,6 +3376,9 @@ a.sentence-attribution:hover {
 .feedback-menu { position: relative; }
 .feedback-trigger { white-space: nowrap; }
 .feedback-panel { width: min(420px, calc(100vw - 24px)); }
+.feedback-view-tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; padding: 3px; border-radius: var(--radius-sm); background: color-mix(in srgb, var(--color-ink) 6%, transparent); }
+.feedback-view-tabs button { min-height: 32px; border: 0; border-radius: calc(var(--radius-sm) - 2px); color: var(--color-ink-muted-72); background: transparent; cursor: pointer; font: inherit; font-size: 11px; }
+.feedback-view-tabs button[data-selected="true"] { color: var(--color-ink); background: var(--typenews-button); box-shadow: var(--typenews-inset); font-weight: 700; }
 .feedback-form { display: grid; gap: 16px; }
 .feedback-form label { display: grid; gap: 7px; color: var(--color-ink-muted-72); font-size: 11px; font-weight: 700; }
 .feedback-form .settings-input,
@@ -3387,6 +3390,20 @@ a.sentence-attribution:hover {
 .feedback-context { margin: -4px 0 0; color: var(--color-ink-muted-48); font-size: 10px; line-height: 1.5; }
 .feedback-submit { justify-content: center; width: 100%; min-height: 38px; }
 .feedback-honeypot { position: absolute !important; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+.my-feedback-list { display: grid; gap: 10px; }
+.my-feedback-card { padding: 13px; border: 1px solid var(--color-divider-soft); border-radius: var(--radius-sm); background: color-mix(in srgb, var(--typenews-glass-soft) 70%, transparent); }
+.my-feedback-card > header { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.my-feedback-card > header > div { display: flex; min-width: 0; align-items: center; gap: 6px; color: var(--color-ink-muted-48); font-size: 9px; }
+.my-feedback-card > header b { padding: 2px 5px; border-radius: var(--radius-pill); background: color-mix(in srgb, var(--color-ink) 7%, transparent); color: var(--color-ink-muted-72); font-size: 9px; }
+.my-feedback-card > header strong { flex: 0 0 auto; padding: 3px 7px; border-radius: var(--radius-pill); color: var(--color-ink-muted-72); background: color-mix(in srgb, var(--color-ink) 7%, transparent); font-size: 9px; }
+.my-feedback-card > header strong[data-status="reviewing"], .my-feedback-card > header strong[data-status="planned"] { color: var(--color-primary); background: color-mix(in srgb, var(--color-primary) 12%, transparent); }
+.my-feedback-card > header strong[data-status="completed"] { color: #24764e; background: rgba(80,170,120,.12); }
+.my-feedback-card h4 { margin: 11px 0 5px; font-size: 13px; }
+.my-feedback-card > p { display: -webkit-box; overflow: hidden; margin: 0; color: var(--color-ink-muted-72); font-size: 11px; line-height: 1.55; white-space: pre-wrap; overflow-wrap: anywhere; -webkit-box-orient: vertical; -webkit-line-clamp: 4; }
+.my-feedback-reply { margin-top: 11px; padding-top: 10px; border-top: 1px solid var(--color-divider-soft); }
+.my-feedback-reply > span { color: var(--color-primary); font-size: 9px; font-weight: 700; }
+.my-feedback-reply p { margin: 5px 0 0; font-size: 11px; line-height: 1.6; white-space: pre-wrap; overflow-wrap: anywhere; }
+.my-feedback-empty { display: flex; min-height: 180px; align-items: center; justify-content: center; gap: 7px; color: var(--color-ink-muted-48); font-size: 11px; }
 
 .feedback-admin .admin-section-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; margin-bottom: 18px; }
 .feedback-admin .admin-section-head h2 { margin: 0 0 4px; font-size: 20px; }
@@ -3405,6 +3422,8 @@ a.sentence-attribution:hover {
 .feedback-admin-card dt { color: var(--color-ink-muted-48); }
 .feedback-admin-card dd { margin: 0; overflow-wrap: anywhere; }
 .feedback-admin-card > label { display: grid; gap: 6px; font-size: 11px; }
+.feedback-admin-replies { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.feedback-admin-replies label { display: grid; gap: 6px; font-size: 11px; }
 .feedback-admin-card > footer { display: flex; justify-content: flex-end; margin-top: 10px; }
 .feedback-admin .admin-empty { display: grid; min-height: 160px; place-items: center; color: var(--color-ink-muted-48); }
 
@@ -3414,6 +3433,7 @@ a.sentence-attribution:hover {
   .feedback-admin .admin-filter-row { justify-content: space-between; }
   .feedback-admin-card > header { align-items: flex-start; }
   .feedback-admin-card > header > div { align-items: flex-start; flex-wrap: wrap; }
+  .feedback-admin-replies { grid-template-columns: 1fr; }
 }
 
 .typing-analytics-grid {

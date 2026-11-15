@@ -19,6 +19,7 @@ type FeedbackRow = {
   contact_email: string | null;
   status: FeedbackStatus;
   admin_reply: string;
+  public_reply: string;
   created_at: string;
   updated_at: string;
 };
@@ -50,7 +51,7 @@ export function FeedbackTab() {
     const supabase = getSupabaseClient();
     if (!supabase) return;
     setBusyId(row.feedback_id);
-    const { error } = await supabase.rpc("admin_update_feedback", { p_feedback_id: row.feedback_id, p_status: row.status, p_admin_reply: row.admin_reply });
+    const { error } = await supabase.rpc("admin_update_feedback", { p_feedback_id: row.feedback_id, p_status: row.status, p_admin_reply: row.admin_reply, p_public_reply: row.public_reply });
     setBusyId(null);
     if (error) setMessage(messageOf(error, "저장하지 못했습니다"));
     else { setMessage(`#${row.feedback_id} 저장 완료`); await load(); }
@@ -67,7 +68,7 @@ export function FeedbackTab() {
       <header><div><span>#{row.feedback_id}</span><b>{CATEGORY_LABEL[row.category]}</b><time>{new Intl.DateTimeFormat("ko-KR", { dateStyle: "medium", timeStyle: "short" }).format(new Date(row.created_at))}</time></div><select value={row.status} onChange={(event) => update(row.feedback_id, { status: event.target.value as FeedbackStatus })}>{Object.entries(STATUS_LABEL).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></header>
       <h3>{row.title}</h3><p className="feedback-admin-body">{row.body}</p>
       <dl><div><dt>작성자</dt><dd>{row.display_name}{row.account_email ? ` · ${row.account_email}` : ""}</dd></div>{row.contact_email ? <div><dt>연락처</dt><dd>{row.contact_email}</dd></div> : null}<div><dt>페이지</dt><dd>{row.page_path || "-"}</dd></div><div><dt>환경</dt><dd>{row.user_agent || "-"}</dd></div></dl>
-      <label><span>관리 메모·답변</span><textarea className="settings-textarea" rows={3} maxLength={3000} value={row.admin_reply} onChange={(event) => update(row.feedback_id, { admin_reply: event.target.value })} /></label>
+      <div className="feedback-admin-replies"><label><span>사용자에게 보낼 답변</span><textarea className="settings-textarea" rows={3} maxLength={3000} value={row.public_reply} onChange={(event) => update(row.feedback_id, { public_reply: event.target.value })} /></label><label><span>내부 메모</span><textarea className="settings-textarea" rows={3} maxLength={3000} value={row.admin_reply} onChange={(event) => update(row.feedback_id, { admin_reply: event.target.value })} /></label></div>
       <footer><button type="button" className="admin-control-button" disabled={busyId === row.feedback_id} onClick={() => void save(row)}>{busyId === row.feedback_id ? <LoaderCircle className="spinning" size={14} /> : <Save size={14} />}저장</button></footer>
     </article>)}</div> : <div className="admin-empty">접수된 내용이 없습니다.</div>}
   </section>;
