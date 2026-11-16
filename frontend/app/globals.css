@@ -6577,6 +6577,24 @@ a.chip-pill {
   margin-top: 20px;
 }
 
+.admin-lock-remember {
+  display: flex;
+  width: fit-content;
+  align-items: center;
+  gap: 7px;
+  margin: 12px auto 0;
+  font-size: 12px;
+  color: var(--color-ink-muted-48);
+  cursor: pointer;
+}
+
+.admin-lock-remember input {
+  width: 15px;
+  height: 15px;
+  margin: 0;
+  accent-color: var(--color-ink);
+}
+
 .admin-head {
   display: flex;
   align-items: flex-end;

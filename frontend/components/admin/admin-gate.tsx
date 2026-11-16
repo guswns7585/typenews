@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { AdminConsole } from "@/components/admin/admin-console";
 import { getSupabaseClient, hasSupabaseConfig } from "@/lib/supabase/client";
 
-/** 탭을 닫으면 다시 물어본다. 같은 탭에서 새로 고칠 때만 유지된다. */
+/** 기억하기를 끈 경우 같은 탭에서 새로 고칠 때만 유지한다. */
 const UNLOCK_KEY = "typenews:admin-unlocked";
 
 type Access = "checking" | "anonymous" | "denied" | "granted" | "unconfigured";
@@ -25,6 +25,7 @@ export function AdminGate() {
   const [access, setAccess] = useState<Access>(hasSupabaseConfig() ? "checking" : "unconfigured");
   const [unlocked, setUnlocked] = useState(false);
   const [password, setPassword] = useState("");
+  const [rememberDevice, setRememberDevice] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -33,9 +34,13 @@ export function AdminGate() {
     if (!supabase) return undefined;
     let active = true;
 
-    async function check(signedIn: boolean) {
-      if (!signedIn) {
-        if (active) setAccess("anonymous");
+    async function check(token?: string) {
+      if (!token) {
+        if (active) {
+          setAccess("anonymous");
+          setUnlocked(false);
+          sessionStorage.removeItem(UNLOCK_KEY);
+        }
         return;
       }
       const { data, error: rpcError } = await supabase!.rpc("is_admin");
@@ -45,18 +50,32 @@ export function AdminGate() {
         setAccess("denied");
         return;
       }
-      setAccess(data === true ? "granted" : "denied");
-      // sessionStorage는 서버 렌더에서 읽을 수 없다. 권한을 확인한 뒤 여기서 본다.
-      setUnlocked(sessionStorage.getItem(UNLOCK_KEY) === "1");
+      if (data !== true) {
+        setAccess("denied");
+        setUnlocked(false);
+        return;
+      }
+      setAccess("granted");
+      // 탭 잠금이 풀렸거나 서버가 서명한 기기 쿠키가 있으면 비밀번호를 건너뛴다.
+      if (sessionStorage.getItem(UNLOCK_KEY) === "1") {
+        setUnlocked(true);
+        return;
+      }
+      const response = await fetch("/api/admin/unlock", {
+        method: "GET",
+        headers: { authorization: `Bearer ${token}` },
+        cache: "no-store",
+      }).catch(() => null);
+      if (active) setUnlocked(response?.ok === true);
     }
 
     void supabase.auth.getSession().then(({ data }) => {
       if (!active) return;
-      void check(Boolean(data.session));
+      void check(data.session?.access_token);
     });
 
     const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
-      void check(Boolean(session));
+      void check(session?.access_token);
     });
 
     return () => {
@@ -87,7 +106,7 @@ export function AdminGate() {
           "content-type": "application/json",
           authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ password }),
+        body: JSON.stringify({ password, rememberDevice }),
       });
       const payload: unknown = await response.json().catch(() => null);
       if (!response.ok) {
@@ -147,6 +166,14 @@ export function AdminGate() {
             들어가기
           </button>
         </form>
+        <label className="admin-lock-remember">
+          <input
+            type="checkbox"
+            checked={rememberDevice}
+            onChange={(event) => setRememberDevice(event.target.checked)}
+          />
+          이 브라우저에서 30일간 기억
+        </label>
         {error ? <p className="settings-status is-error">{error}</p> : null}
       </div>
     );
@@ -157,6 +184,7 @@ export function AdminGate() {
       onLock={() => {
         sessionStorage.removeItem(UNLOCK_KEY);
         setUnlocked(false);
+        void fetch("/api/admin/unlock", { method: "DELETE" });
       }}
     />
   );

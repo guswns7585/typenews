@@ -1,55 +1,40 @@
 import { createHash, timingSafeEqual } from "node:crypto";
 import { createClient } from "@supabase/supabase-js";
-import { NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
+import { ADMIN_DEVICE_SECONDS, createAdminDeviceToken, verifyAdminDeviceToken } from "@/features/admin/admin-device";
 
-/**
- * 관리자 페이지 잠금 해제.
- *
- * ⚠️ 이것은 권한 검사가 아니다. 오조작 방지용 잠금이다.
- * 실제 권한은 Supabase의 RLS와 is_admin()이 판정한다. 여기를 통과해도
- * 관리자가 아니면 어떤 행도 읽거나 고칠 수 없다.
- *
- * 비밀번호를 클라이언트에서 비교하면 번들에 값이 그대로 들어간다.
- * 그래서 서버에서만 비교하고, 환경변수 이름에도 NEXT_PUBLIC을 붙이지 않는다.
- */
-export async function POST(request: Request) {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseKey =
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  if (!supabaseUrl || !supabaseKey) {
-    return NextResponse.json({ error: "Supabase 설정이 없습니다" }, { status: 503 });
-  }
+const DEVICE_COOKIE = "typenews_admin_device";
 
-  const token = request.headers.get("authorization")?.replace(/^Bearer\s+/i, "").trim();
-  if (!token) {
-    return NextResponse.json({ error: "로그인이 필요합니다" }, { status: 401 });
-  }
+/** 저장된 기기 잠금 해제를 확인한다. 실제 권한은 매번 is_admin()으로 다시 판정한다. */
+export async function GET(request: NextRequest) {
+  const admin = await verifiedAdmin(request);
+  if ("response" in admin) return admin.response;
 
-  /* 비밀번호 정답 여부를 확인하기 전에 실제 관리자 계정인지 DB에서 판정한다.
-     이 검사가 없으면 인터넷의 누구나 이 API를 비밀번호 확인기로 쓸 수 있다. */
-  const supabase = createClient(supabaseUrl, supabaseKey, {
-    auth: { autoRefreshToken: false, detectSessionInUrl: false, persistSession: false },
-    global: { headers: { Authorization: `Bearer ${token}` } },
-  });
-  const { data: isAdmin, error: adminError } = await supabase.rpc("is_admin");
-  if (adminError || isAdmin !== true) {
-    return NextResponse.json({ error: "권한이 없습니다" }, { status: 403 });
-  }
+  const secret = process.env.ADMIN_PANEL_PASSWORD;
+  if (!secret) return configurationError();
+  const remembered = verifyAdminDeviceToken(request.cookies.get(DEVICE_COOKIE)?.value, admin.userId, secret);
+  return remembered
+    ? NextResponse.json({ ok: true })
+    : NextResponse.json({ error: "기억된 기기가 아닙니다" }, { status: 401 });
+}
+
+/** 관리자 비밀번호를 확인하고 선택한 경우 이 브라우저를 30일간 기억한다. */
+export async function POST(request: NextRequest) {
+  const admin = await verifiedAdmin(request);
+  if ("response" in admin) return admin.response;
 
   const expected = process.env.ADMIN_PANEL_PASSWORD;
-  if (!expected) {
-    return NextResponse.json(
-      { error: "ADMIN_PANEL_PASSWORD가 설정되지 않았습니다" },
-      { status: 503 },
-    );
-  }
+  if (!expected) return configurationError();
 
   let password = "";
+  let rememberDevice = false;
   try {
     const body: unknown = await request.json();
-    if (body && typeof body === "object" && "password" in body) {
-      const value = (body as { password: unknown }).password;
-      if (typeof value === "string") password = value;
+    if (body && typeof body === "object") {
+      if ("password" in body && typeof (body as { password: unknown }).password === "string") {
+        password = (body as { password: string }).password;
+      }
+      rememberDevice = "rememberDevice" in body && (body as { rememberDevice: unknown }).rememberDevice === true;
     }
   } catch {
     return NextResponse.json({ error: "잘못된 요청입니다" }, { status: 400 });
@@ -58,12 +43,75 @@ export async function POST(request: Request) {
   if (!password || password.length > 256) {
     return NextResponse.json({ error: "비밀번호를 입력하세요" }, { status: 400 });
   }
-
   if (!matches(password, expected)) {
     return NextResponse.json({ error: "비밀번호가 맞지 않습니다" }, { status: 401 });
   }
 
-  return NextResponse.json({ ok: true });
+  const response = NextResponse.json({ ok: true, remembered: rememberDevice });
+  if (rememberDevice) {
+    const expires = Date.now() + ADMIN_DEVICE_SECONDS * 1000;
+    response.cookies.set({
+      name: DEVICE_COOKIE,
+      value: createAdminDeviceToken(admin.userId, expires, expected),
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
+      path: "/",
+      maxAge: ADMIN_DEVICE_SECONDS,
+      expires: new Date(expires),
+    });
+  } else {
+    forgetDevice(response);
+  }
+  return response;
+}
+
+/** 관리자 화면에서 잠글 때 브라우저 기억도 지운다. */
+export async function DELETE() {
+  const response = NextResponse.json({ ok: true });
+  forgetDevice(response);
+  return response;
+}
+
+async function verifiedAdmin(request: NextRequest): Promise<{ userId: string } | { response: NextResponse }> {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (!supabaseUrl || !supabaseKey) {
+    return { response: NextResponse.json({ error: "Supabase 설정이 없습니다" }, { status: 503 }) };
+  }
+
+  const token = request.headers.get("authorization")?.replace(/^Bearer\s+/i, "").trim();
+  if (!token) return { response: NextResponse.json({ error: "로그인이 필요합니다" }, { status: 401 }) };
+
+  const supabase = createClient(supabaseUrl, supabaseKey, {
+    auth: { autoRefreshToken: false, detectSessionInUrl: false, persistSession: false },
+    global: { headers: { Authorization: `Bearer ${token}` } },
+  });
+  const [{ data: isAdmin, error: adminError }, { data: userData, error: userError }] = await Promise.all([
+    supabase.rpc("is_admin"),
+    supabase.auth.getUser(token),
+  ]);
+  if (adminError || userError || isAdmin !== true || !userData.user) {
+    return { response: NextResponse.json({ error: "권한이 없습니다" }, { status: 403 }) };
+  }
+  return { userId: userData.user.id };
+}
+
+function forgetDevice(response: NextResponse) {
+  response.cookies.set({
+    name: DEVICE_COOKIE,
+    value: "",
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "strict",
+    path: "/",
+    maxAge: 0,
+    expires: new Date(0),
+  });
+}
+
+function configurationError() {
+  return NextResponse.json({ error: "ADMIN_PANEL_PASSWORD가 설정되지 않았습니다" }, { status: 503 });
 }
 
 /** 길이가 달라도 비교 시간이 새지 않게 해시를 거친 뒤 맞춘다. */
