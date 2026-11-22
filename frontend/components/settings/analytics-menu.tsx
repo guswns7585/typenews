@@ -5,10 +5,12 @@ import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { useAuthProfile } from "@/components/auth/auth-button";
 import { TypingAnalyticsSummary } from "@/components/settings/typing-analytics-summary";
+import { ensureActivePracticeProfile, subscribePracticeProfile, type TypingPracticeProfile } from "@/features/analytics/practice-profile";
 import { useUiLanguage } from "@/lib/ui-language";
 
 export function AnalyticsMenu() {
   const [open, setOpen] = useState(false);
+  const [practiceProfile, setPracticeProfile] = useState<TypingPracticeProfile | null>(null);
   const { signedIn } = useAuthProfile();
   const { t } = useUiLanguage();
   useEffect(() => {
@@ -17,9 +19,16 @@ export function AnalyticsMenu() {
     document.addEventListener("keydown", onKeyDown);
     return () => document.removeEventListener("keydown", onKeyDown);
   }, [open]);
+  useEffect(() => {
+    if (!signedIn) return;
+    let active = true;
+    void ensureActivePracticeProfile().then((profile) => { if (active) setPracticeProfile(profile); });
+    const unsubscribe = subscribePracticeProfile((profile) => { if (active) setPracticeProfile(profile); });
+    return () => { active = false; unsubscribe(); };
+  }, [signedIn]);
   return (
     <div className="analytics-menu">
-      <button type="button" className="chip-pill" data-selected={open} title={t("통계", "Analytics")} onClick={() => setOpen(true)}><BarChart3 size={14} /> {t("통계", "Analytics")}</button>
+      <button type="button" className="chip-pill analytics-trigger" data-selected={open} title={practiceProfile ? t(`통계 · ${practiceProfile.name}`, `Analytics · ${practiceProfile.name}`) : t("통계", "Analytics")} onClick={() => setOpen(true)}><BarChart3 size={14} /> {t("통계", "Analytics")}{practiceProfile && !practiceProfile.is_default ? <small>{practiceProfile.name}</small> : null}</button>
       {open ? createPortal(<><div className="analytics-scrim" onClick={() => setOpen(false)} aria-hidden="true" /><section className="analytics-modal" role="dialog" aria-modal="true" aria-label={t("나의 타이핑 통계", "My typing analytics")}><header className="analytics-modal-head"><div><span>{t("PERSONAL REPORT", "PERSONAL REPORT")}</span><h2>{t("나의 타이핑 통계", "My typing analytics")}</h2></div><button type="button" className="icon-btn-circular" aria-label={t("통계 닫기", "Close analytics")} onClick={() => setOpen(false)}><X size={17} /></button></header><TypingAnalyticsSummary signedIn={signedIn} /></section></>, document.body) : null}
     </div>
   );

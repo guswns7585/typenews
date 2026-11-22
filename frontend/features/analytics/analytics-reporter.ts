@@ -1,4 +1,10 @@
 import { getSupabaseClient } from "@/lib/supabase/client";
+import {
+  clearPracticeProfileSession,
+  ensureActivePracticeProfile,
+  setActivePracticeProfile,
+  type TypingPracticeProfile,
+} from "./practice-profile";
 import { typingAnalyticsTracker } from "./typing-analytics-tracker";
 
 const FLUSH_INTERVAL_MS = 60_000;
@@ -19,8 +25,17 @@ function resetReporterSession() {
   lastFlushedCompletions = 0;
 }
 
+export async function switchTypingPracticeProfile(profile: TypingPracticeProfile) {
+  await flushTypingAnalytics(true);
+  setActivePracticeProfile(profile);
+  resetReporterSession();
+}
+
 function syncTrackedUser(userId: string | null) {
-  if (trackedUserId !== undefined && trackedUserId !== userId) resetReporterSession();
+  if (trackedUserId !== undefined && trackedUserId !== userId) {
+    resetReporterSession();
+    clearPracticeProfileSession();
+  }
   trackedUserId = userId;
 }
 
@@ -44,14 +59,27 @@ export async function flushTypingAnalytics(force = false) {
   try {
     const { data } = await supabase.auth.getSession();
     if (!data.session) return;
+    const profile = await ensureActivePracticeProfile();
     const payload = {
       p_session_key: snapshot.sessionKey,
       p_buckets: snapshot.buckets,
       p_weaknesses: snapshot.weaknesses,
       p_key_usage: snapshot.keyUsage,
     };
-    let { error } = await supabase.rpc("report_typing_analytics_v2", payload);
+    let error = null;
+    if (profile) {
+      ({ error } = await supabase.rpc("report_typing_analytics_v3", {
+        ...payload,
+        p_practice_profile_id: profile.id,
+        p_practice_generation: profile.generation,
+      }));
+    } else {
+      ({ error } = await supabase.rpc("report_typing_analytics_v2", payload));
+    }
     // SQL 배포 전에도 기존 분석 수집은 멈추지 않는다.
+    if (error && /report_typing_analytics_v3|schema cache/i.test(error.message)) {
+      ({ error } = await supabase.rpc("report_typing_analytics_v2", payload));
+    }
     if (error && /report_typing_analytics_v2|schema cache/i.test(error.message)) {
       ({ error } = await supabase.rpc("report_typing_analytics", {
         p_session_key: snapshot.sessionKey,

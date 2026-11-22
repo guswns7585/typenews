@@ -45,7 +45,10 @@ import { keystrokesForCharacter } from "@/features/typing-engine/keystrokes";
 import { playKeyboardSound, preloadKeyboardSound } from "@/features/typing-engine/keyboard-sound";
 import { calculateMetrics } from "@/features/typing-engine/metrics";
 import { MILESTONE_VISIBLE_MS, milestoneFor } from "@/features/typing-engine/milestones";
-import { shouldSubmitTypingKey } from "@/features/typing-engine/submission-key";
+import {
+  shouldSubmitTypingKey,
+  virtualSpaceSubmissionValue,
+} from "@/features/typing-engine/submission-key";
 import { seoulMonthId } from "@/lib/month";
 import {
   millisecondsUntilNextSeoulDay,
@@ -339,6 +342,7 @@ export function TypingWorkspace() {
   /* macOS Chrome은 한글 조합 중 Space로 제출해도 compositionend/input을 뒤늦게
      보낼 수 있다. 그 커밋이 다음 단어 입력으로 들어오지 않게 같은 프레임만 막는다. */
   const discardImeCommitRef = useRef(false);
+  const finishCurrentSentenceRef = useRef<() => void>(() => undefined);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const inputRevealRef = useRef<HTMLDivElement>(null);
   const surfaceRef = useRef<HTMLDivElement>(null);
@@ -1653,6 +1657,10 @@ export function TypingWorkspace() {
     }
   }
 
+  useLayoutEffect(() => {
+    finishCurrentSentenceRef.current = finishCurrentSentence;
+  });
+
   function onChange(value: string) {
     if (soundMode) playKeyboardSound();
     // 필사 입력은 어뷰징 판정 자료가 되지 않는다. 위 finishCurrentSentence 참고.
@@ -1976,7 +1984,24 @@ export function TypingWorkspace() {
                 setInput("");
                 return;
               }
-              onChange(event.currentTarget.value);
+              const nextValue = event.currentTarget.value;
+              const submissionValue = virtualSpaceSubmissionValue(
+                nextValue,
+                (candidate) => alignInput(targetText, candidate, effectiveSettings).isComplete,
+              );
+              if (submissionValue !== null) {
+                event.currentTarget.value = submissionValue;
+                if (!isScripture) {
+                  behaviorTracker.noteKeystroke();
+                  typingAnalyticsTracker.noteKey("Space", false);
+                }
+                onChange(submissionValue);
+                /* 상태 반영 뒤 최신 렌더의 완료 함수를 호출한다. 현재 렌더의
+                   canComplete는 Space 입력 직전 값이라 그대로 호출하면 놓칠 수 있다. */
+                window.setTimeout(() => finishCurrentSentenceRef.current(), 0);
+                return;
+              }
+              onChange(nextValue);
             }}
             /* 클립보드를 막아도 선택한 글자를 끌어다 놓으면 그대로 들어온다.
                붙여넣기와 똑같은 우회로라 같이 막고 같은 신호로 센다. */

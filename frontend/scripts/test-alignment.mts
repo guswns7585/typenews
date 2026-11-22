@@ -1,6 +1,9 @@
 import assert from "node:assert/strict";
 import { alignInput } from "../features/typing-engine/alignment";
-import { shouldSubmitTypingKey } from "../features/typing-engine/submission-key";
+import {
+  shouldSubmitTypingKey,
+  virtualSpaceSubmissionValue,
+} from "../features/typing-engine/submission-key";
 import type { TypingSettings } from "../lib/types";
 
 const baseSettings: TypingSettings = {
@@ -27,6 +30,9 @@ assert.equal(trailingIgnoredPunctuation.isComplete, true);
 assert.equal(shouldSubmitTypingKey(" ", true, true), true);
 assert.equal(shouldSubmitTypingKey("Enter", true, true), false);
 assert.equal(shouldSubmitTypingKey(" ", false, true), false);
+assert.equal(virtualSpaceSubmissionValue("완성 ", (value) => value === "완성"), "완성");
+assert.equal(virtualSpaceSubmissionValue("미완 ", (value) => value === "완성"), null);
+assert.equal(virtualSpaceSubmissionValue("완성", (value) => value === "완성"), null);
 
 const leadingIgnored = alignInput("[NASA] 발사 성공", "발", {
   ...baseSettings,
