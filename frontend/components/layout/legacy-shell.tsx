@@ -70,6 +70,11 @@ export function LegacyShell({ children, showTypingChrome = true, wide = false }:
   const isLoafingTheme = isSpreadsheet || isVscode || isTerminal || isAgentTheme;
   const useEmbeddedTypingChrome = showTypingChrome && isTyping && !isLoafingTheme;
   const useShellTypingChrome = showTypingChrome && isTyping && isLoafingTheme;
+  const loafingChildren = isLoafingTheme && !isTyping ? (
+    <div className="loafing-route-content" data-loafing-theme={visualTheme} data-loafing-route={isEvent ? "event" : isShowcase ? "showcase" : "notices"}>
+      {children}
+    </div>
+  ) : children;
 
   // OS의 "동작 줄이기"를 도중에 바꿔도 배경이 바로 따라오게 한다.
   useEffect(() => watchReducedMotion(), []);
@@ -126,10 +131,10 @@ export function LegacyShell({ children, showTypingChrome = true, wide = false }:
       </div>
       <div className="app-canvas">
       <PreferencesSync />
-      {isSpreadsheet ? <SpreadsheetChrome showSettings={isTyping} /> : null}
-      {isVscode ? <VscodeChrome showSettings={isTyping} /> : null}
-      {isTerminal ? <TerminalChrome showSettings={isTyping} /> : null}
-      {isAgentTheme ? <AgentChrome theme={visualTheme as AgentTheme} showSettings={isTyping} /> : null}
+      {isSpreadsheet ? <SpreadsheetChrome showSettings /> : null}
+      {isVscode ? <VscodeChrome showSettings /> : null}
+      {isTerminal ? <TerminalChrome showSettings /> : null}
+      {isAgentTheme ? <AgentChrome theme={visualTheme as AgentTheme} showSettings /> : null}
       <header className="global-nav" data-section={isShowcase ? "showcase" : undefined}>
         <div className="global-nav-left">
           <Link href="/" className="global-nav-brand" aria-label={t("Type News 홈", "Type News home")}>
@@ -207,7 +212,7 @@ export function LegacyShell({ children, showTypingChrome = true, wide = false }:
         {isTyping ? <HeaderStats /> : null}
 
         <div className="global-nav-right">
-          {isTyping ? <><AnalyticsMenu /><SettingsMenu /></> : null}
+          {!isAdmin ? <><AnalyticsMenu /><SettingsMenu /></> : null}
           <FeedbackPanel />
           <AdminNavLink />
           <AuthButton />
@@ -241,9 +246,8 @@ export function LegacyShell({ children, showTypingChrome = true, wide = false }:
               {Array.from({ length: 24 }, (_, index) => <span key={index}>{index + 1}</span>)}
             </div>
             <div className="spreadsheet-sheet">
-              <SpreadsheetEditableGrid />
-              <SpreadsheetDataLayer />
-              {children}
+              {isTyping ? <><SpreadsheetEditableGrid /><SpreadsheetDataLayer /></> : null}
+              {loafingChildren}
             </div>
             <footer className="spreadsheet-sheet-tabs" aria-hidden="true">
               <span className="spreadsheet-sheet-nav">‹  ›</span>
@@ -254,11 +258,11 @@ export function LegacyShell({ children, showTypingChrome = true, wide = false }:
             </footer>
           </div>
         ) : isVscode ? (
-          <VscodeWorkbench>{children}</VscodeWorkbench>
+          <VscodeWorkbench>{loafingChildren}</VscodeWorkbench>
         ) : isTerminal ? (
-          <TerminalWorkbench>{children}</TerminalWorkbench>
+          <TerminalWorkbench>{loafingChildren}</TerminalWorkbench>
         ) : isAgentTheme ? (
-          <AgentWorkbench theme={visualTheme as AgentTheme}>{children}</AgentWorkbench>
+          <AgentWorkbench theme={visualTheme as AgentTheme}>{loafingChildren}</AgentWorkbench>
         ) : children}
       </main>
 

@@ -7,7 +7,6 @@ import {
   Bell,
   Check,
   ChevronDown,
-  Circle,
   CircleDashed,
   Code2,
   FileCode2,
@@ -29,8 +28,11 @@ import {
   TerminalSquare,
   X,
 } from "lucide-react";
+import { usePathname } from "next/navigation";
 import { SettingsMenu } from "@/components/settings/settings-menu";
 import { AnalyticsMenu } from "@/components/settings/analytics-menu";
+import { FeedbackPanel } from "@/components/feedback/feedback-panel";
+import { LoafingNavigation, loafingDocumentLabel } from "@/components/layout/loafing-navigation";
 import { useUiLanguage } from "@/lib/ui-language";
 
 export type AgentTheme = "codex" | "claude" | "claude-code";
@@ -57,13 +59,11 @@ export function AgentChrome({
   if (theme === "claude-code") {
     return (
       <div className="agent-chrome is-claude-code">
-        <div className="cc-tab-strip" aria-hidden="true">
-          <span className="cc-tab is-active"><TerminalSquare size={13} /> {t("문장 품질 세션", "Prompt quality session")}</span>
-          <span className="cc-tab"><SquareTerminal size={13} /> {t("명령 프롬프트", "Command Prompt")}</span>
-          <Plus size={14} />
-          <ChevronDown size={13} />
+        <div className="cc-tab-strip">
+          <LoafingNavigation variant="claude-code" />
         </div>
         <div className="agent-title-actions">
+          <FeedbackPanel triggerLabel={t("문제", "issue")} />
           {showSettings ? <><AnalyticsMenu /><SettingsMenu /></> : null}
           <WindowControls />
         </div>
@@ -101,6 +101,7 @@ export function AgentChrome({
       </div>
       <div className="agent-title-actions">
         {theme === "claude" ? <><SquareTerminal size={14} /><Globe2 size={14} /><MoreHorizontal size={15} /></> : null}
+        <FeedbackPanel triggerLabel={t("피드백", "Feedback")} />
         {showSettings ? <><AnalyticsMenu /><SettingsMenu /></> : null}
         <WindowControls />
       </div>
@@ -111,7 +112,7 @@ export function AgentChrome({
 function CodexSidebar() {
   const { t } = useUiLanguage();
   return (
-    <aside className="agent-sidebar is-codex" aria-hidden="true">
+    <aside className="agent-sidebar is-codex">
       <div className="agent-sidebar-brand"><strong>Codex</strong><ChevronDown size={13} /><span /><Search size={14} /><Bell size={14} /></div>
       <div className="agent-sidebar-primary">
         <div><MessageSquareText size={15} /> {t("새 채팅", "New chat")}</div>
@@ -122,16 +123,12 @@ function CodexSidebar() {
       </div>
       <span className="agent-sidebar-label">{t("프로젝트", "Projects")}</span>
       <div className="codex-project-list">
-        <div><Folder size={14} /> TypeNews Lab</div>
-        <div className="is-active">{t("문장 품질 검토", "Prompt quality review")}</div>
-        <div><Folder size={14} /> Feed Studio</div>
-        <div>{t("뉴스 정제 샘플 점검", "Review feed samples")}</div>
-        <div><Folder size={14} /> Interface Notes</div>
-        <div>{t("접근성 메모 정리", "Organize accessibility notes")}</div>
+        <div><Folder size={14} /> Content QA</div>
+        <LoafingNavigation variant="codex" />
       </div>
       <div className="agent-sidebar-footer">
-        <span className="agent-avatar">TN</span>
-        <span><strong>TypeNews Lab</strong><small>{t("로컬 작업 공간", "Local workspace")}</small></span>
+        <span className="agent-avatar">QA</span>
+        <span><strong>Content QA</strong><small>{t("로컬 작업 공간", "Local workspace")}</small></span>
       </div>
     </aside>
   );
@@ -140,7 +137,7 @@ function CodexSidebar() {
 function ClaudeSidebar() {
   const { t } = useUiLanguage();
   return (
-    <aside className="agent-sidebar is-claude" aria-hidden="true">
+    <aside className="agent-sidebar is-claude">
       <div className="claude-sidebar-tabs"><span>{t("홈", "Home")}</span><strong><Code2 size={13} /> Code</strong></div>
       <div className="agent-sidebar-primary">
         <div><Plus size={16} /> {t("새로 생성", "New chat")}</div>
@@ -148,17 +145,14 @@ function ClaudeSidebar() {
         <div><Settings2 size={15} /> {t("사용자 지정", "Customize")}</div>
         <div><ChevronDown size={15} /> {t("더보기", "More")}</div>
       </div>
-      <div className="claude-workspace-head"><span>TypeNews Lab</span><Plus size={14} /></div>
+      <div className="claude-workspace-head"><span>Content QA</span><Plus size={14} /></div>
       <div className="claude-thread-list">
-        <div className="is-active"><Circle size={8} /> {t("입력 검수 워크스페이스", "Input review workspace")}</div>
-        <div><Circle size={8} /> {t("피드 샘플 분류", "Classify feed samples")}</div>
-        <div><Circle size={8} /> {t("테마 사용성 메모", "Theme usability notes")}</div>
-        <div><Circle size={8} /> {t("월간 통계 확인", "Monthly metrics review")}</div>
+        <LoafingNavigation variant="claude" />
       </div>
       <div className="claude-update-card"><Sparkles size={20} /><span><strong>{t("새 버전이 준비됐습니다", "A new version is ready")}</strong><small>{t("다시 시작하여 업데이트", "Restart to update")}</small></span><ArrowRight size={15} /></div>
       <div className="agent-sidebar-footer">
-        <span className="agent-avatar">TN</span>
-        <span><strong>TypeNews</strong><small>{t("개인 작업 공간", "Personal workspace")}</small></span>
+        <span className="agent-avatar">QA</span>
+        <span><strong>Content QA</strong><small>{t("개인 작업 공간", "Personal workspace")}</small></span>
       </div>
     </aside>
   );
@@ -246,16 +240,20 @@ function ClaudeTranscript() {
 }
 
 function InAppWorkbench({ theme, children }: { theme: "codex" | "claude"; children: React.ReactNode }) {
-  const { t } = useUiLanguage();
+  const pathname = usePathname();
+  const { isEnglish, t } = useUiLanguage();
   const isCodex = theme === "codex";
+  const isTyping = pathname === "/";
+  const documentLabel = loafingDocumentLabel(pathname, theme, isEnglish);
   return (
-    <div className={`agent-workbench is-${theme}`}>
+    <div className={`agent-workbench is-${theme}`} data-loafing-page={pathname === "/" ? undefined : "true"}>
       {isCodex ? <CodexSidebar /> : <ClaudeSidebar />}
       <section className="agent-chat-pane">
         <header className="agent-chat-head" aria-hidden="true">
-          <div><Folder size={15} /><strong>{t("문장 품질 검토", "Prompt quality review")}</strong>{!isCodex ? <small>TypeNews Lab</small> : null}</div>
+          <div><Folder size={15} /><strong>{documentLabel}</strong>{!isCodex ? <small>Content QA</small> : null}</div>
           <span>{isCodex ? <MoreHorizontal size={16} /> : <><TerminalSquare size={14} /><Square size={12} /><Globe2 size={14} /></>}</span>
         </header>
+        {isTyping ? <>
         {isCodex ? <CodexTranscript /> : <ClaudeTranscript />}
         <div className={`agent-native-composer is-${theme}`}>
           <div className="agent-live-area">{children}</div>
@@ -272,22 +270,32 @@ function InAppWorkbench({ theme, children }: { theme: "codex" | "claude"; childr
             </div>
           </div>
         </div>
+        </> : (
+          <div className={`agent-route-view is-${theme}`}>
+            <div className="agent-route-prompt">{documentLabel}</div>
+            <section className="agent-route-result" aria-label={documentLabel}>
+              {isCodex ? <div className="agent-route-file"><FileCode2 size={15} /><code>{loafingDocumentLabel(pathname, "vscode", true)}</code></div> : null}
+              {children}
+            </section>
+          </div>
+        )}
       </section>
     </div>
   );
 }
 
 function ClaudeCodeWorkbench({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
   const { t } = useUiLanguage();
   return (
-    <section className="claude-code-workbench">
+    <section className="claude-code-workbench" data-loafing-page={pathname === "/" ? undefined : "true"}>
       <div className="claude-code-terminal">
         <div className="claude-code-welcome" aria-hidden="true">
           <div className="cc-welcome-main">
             <p><b>Claude Code</b> v2.1.6</p>
             <strong>{t("다시 오신 것을 환영합니다", "Welcome back")}</strong>
             <span className="cc-mark">✦</span>
-            <small>Sonnet 4.5 · TypeNews Lab<br />C:\workspaces\typing-lab</small>
+            <small>Sonnet 4.5 · Content QA<br />C:\workspaces\content-quality</small>
           </div>
           <div className="cc-recent">
             <strong>{t("최근 활동", "Recent Activity")}</strong>
@@ -307,13 +315,16 @@ function ClaudeCodeWorkbench({ children }: { children: React.ReactNode }) {
           <p className="cc-code-line is-active"><span>14</span> await verifyTypingSession(review);</p>
           <p className="claude-code-note">{t("활성 문장을 아래 세션에서 직접 확인합니다.", "Review the active prompt in the session below.")}</p>
         </div>
-        <div className="claude-code-input-dock">
+        {pathname === "/" ? <div className="claude-code-input-dock">
           <div className="claude-code-live-area">{children}</div>
-        </div>
+        </div> : <div className="cc-route-output">
+          <div className="cc-route-command"><span aria-hidden="true">❯</span> <code>{loafingDocumentLabel(pathname, "claude-code", true)}</code></div>
+          {children}
+        </div>}
         <div className="claude-code-footer" aria-hidden="true">
           <span>⏵⏵ {t("권한 확인 사용", "permissions enabled")}</span>
           <span className="claude-code-footer-spacer" />
-          <span>Sonnet 4.5</span><span>TypeNews Lab</span>
+          <span>Sonnet 4.5</span><span>Content QA</span>
         </div>
       </div>
     </section>

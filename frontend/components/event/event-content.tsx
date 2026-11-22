@@ -113,7 +113,10 @@ function PrizeCard({ prize, index }: { prize: Prize; index: number }) {
         )}
       </div>
       <div className="prize-meta">
-        <h5 title={prize.fullName ?? prize.name}>{prize.name}</h5>
+        <h5 title={prize.fullName ?? prize.name}>
+          <span className={prize.href ? "prize-linked-label" : undefined}>{prize.name}</span>
+          {prize.href ? <a className="prize-text-link" href={prize.href} target="_blank" rel="noreferrer">{prize.name}</a> : null}
+        </h5>
       </div>
     </article>
   );

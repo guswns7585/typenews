@@ -12,6 +12,7 @@ import "@fontsource/nanum-myeongjo/400.css";
 import "@fontsource/nanum-myeongjo/700.css";
 import "./globals.css";
 import "./agent-themes.css";
+import "./loafing-documents.css";
 
 export const metadata: Metadata = {
   /* OG 이미지의 상대 경로를 절대 URL로 만들 기준. 없으면 Next가 개발에서는

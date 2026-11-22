@@ -1,0 +1,291 @@
+/* Secondary views sit inside the selected workspace. Keep these styles away
+   from the typing surface, the classic pages and the spreadsheet cells. */
+.prize-text-link { display: none; }
+
+html:is([data-visual-theme="vscode"], [data-visual-theme="terminal"], [data-visual-theme="claude-code"], [data-visual-theme="codex"], [data-visual-theme="claude"]) .loafing-route-content {
+  --document-surface: var(--color-canvas);
+  --document-rule: var(--work-row-rule);
+  --document-accent: var(--color-ink);
+  --document-control-radius: 4px;
+  --typenews-panel-shadow: none;
+  --typenews-button-shadow: none;
+  --typenews-inset: none;
+  --color-divider-soft: var(--document-rule);
+  --color-hairline: var(--document-rule);
+  color: var(--color-ink);
+  min-width: 0;
+  font-size: 13px;
+}
+
+html[data-visual-theme="vscode"] .loafing-route-content {
+  --document-accent: #9cdcfe;
+  --document-surface: #252526;
+  --document-control-radius: 2px;
+  --color-ink-muted-48: #a6adb6;
+  --color-ink-muted-64: #b5bcc6;
+  --color-ink-muted-72: #c5cbd3;
+  --color-ink-muted-80: #d4d4d4;
+}
+
+html[data-visual-theme="terminal"] .loafing-route-content {
+  --document-accent: #68d65a;
+  --document-surface: #151515;
+  --document-control-radius: 0px;
+  --color-ink-muted-48: #a6a6a6;
+  --color-ink-muted-64: #bbb;
+  --color-ink-muted-72: #d2d2d2;
+  --color-ink-muted-80: #e0e0e0;
+}
+
+html[data-visual-theme="claude-code"] .loafing-route-content {
+  --document-accent: #efaa87;
+  --document-surface: #262321;
+  --color-ink-muted-48: #aaa196;
+  --color-ink-muted-64: #bcb2a6;
+  --color-ink-muted-72: #d4cabf;
+  --color-ink-muted-80: #dedad3;
+}
+
+html[data-visual-theme="codex"] .loafing-route-content {
+  --document-accent: #454e6a;
+  --document-surface: #f6f7fa;
+  --document-control-radius: 6px;
+}
+
+html[data-visual-theme="claude"] .loafing-route-content {
+  --document-accent: #875240;
+  --document-surface: #f7f2e9;
+  --document-control-radius: 7px;
+  --color-canvas: #fcfaf6;
+}
+
+.loafing-route-content .prize-meta a { color: inherit; }
+
+html:not([data-visual-theme="spreadsheet"]) .loafing-route-content :is(.showcase-page, .showcase-detail, .notices-page) {
+  width: 100%;
+  min-width: 0;
+  padding: 0;
+}
+
+html:not([data-visual-theme="spreadsheet"]) .loafing-route-content :is(.showcase-hero, .notices-hero) {
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 0 0 12px;
+  padding: 0 0 10px;
+  border: 0;
+  border-bottom: 1px solid var(--document-rule);
+  border-radius: 0;
+  color: var(--color-ink);
+  background: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
+}
+
+html:not([data-visual-theme="spreadsheet"]) .loafing-route-content :is(.showcase-hero, .notices-hero) h1 {
+  margin: 0;
+  color: var(--document-accent);
+}
+
+html:not([data-visual-theme="spreadsheet"]) .loafing-route-content .notices-hero > div > span { display: none; }
+html:not([data-visual-theme="spreadsheet"]) .loafing-route-content .notice-meta { color: var(--color-ink-muted-48); }
+html:not([data-visual-theme="spreadsheet"]) .loafing-route-content .notice-meta :is(span, b) {
+  border-radius: var(--document-control-radius);
+  padding: 2px 5px;
+  background: var(--document-surface);
+}
+
+html:not([data-visual-theme="spreadsheet"]) .loafing-route-content .notices-editor {
+  padding: 16px;
+  border-color: var(--document-rule);
+  border-radius: var(--document-control-radius);
+  background: var(--document-surface);
+  box-shadow: none;
+}
+
+/* Editor preview: supporting information sits beside the inspected data. */
+html[data-visual-theme="vscode"] .loafing-route-content .ranking-event-wrapper {
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+  gap: 12px;
+}
+html[data-visual-theme="vscode"] .loafing-route-content :is(.ranking-panel, #event-info-box) {
+  gap: 7px;
+  padding: 10px 12px;
+}
+html[data-visual-theme="vscode"] .loafing-route-content .notice-entry {
+  padding: 12px 4px 16px;
+  border-bottom: 1px solid var(--document-rule);
+  background: transparent;
+}
+html[data-visual-theme="vscode"] .loafing-route-content .notice-entry h2::before {
+  content: "## ";
+  color: var(--document-accent);
+}
+html[data-visual-theme="vscode"] .loafing-route-content .notice-entry > p { color: var(--color-ink-muted-72); }
+
+/* Console routes use compact text output and keep resource links usable. */
+html:is([data-visual-theme="terminal"], [data-visual-theme="claude-code"]) .loafing-route-content :is(.prize-thumb, .prize-linked-label) {
+  display: none;
+}
+html:is([data-visual-theme="terminal"], [data-visual-theme="claude-code"]) .loafing-route-content .prize-text-link {
+  display: inline;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+html:is([data-visual-theme="terminal"], [data-visual-theme="claude-code"]) .loafing-route-content .prize-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0;
+}
+html:is([data-visual-theme="terminal"], [data-visual-theme="claude-code"]) .loafing-route-content .prize-card {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 4px 0;
+  animation: none;
+}
+html:is([data-visual-theme="terminal"], [data-visual-theme="claude-code"]) .loafing-route-content .prize-card::before {
+  content: "–";
+  color: var(--document-accent);
+}
+html:is([data-visual-theme="terminal"], [data-visual-theme="claude-code"]) .loafing-route-content .prize-meta h5 {
+  display: inline;
+  font: inherit;
+}
+html:is([data-visual-theme="terminal"], [data-visual-theme="claude-code"]) .loafing-route-content #monthly-ranking-list {
+  max-height: min(260px, 38dvh);
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-ink-muted-48) var(--document-surface);
+}
+html:is([data-visual-theme="terminal"], [data-visual-theme="claude-code"]) .loafing-route-content .notice-entry {
+  padding: 10px 0 14px;
+  border-color: var(--document-rule);
+}
+html:is([data-visual-theme="terminal"], [data-visual-theme="claude-code"]) .loafing-route-content .notice-entry > p {
+  color: var(--color-ink-muted-72);
+  font: inherit;
+  line-height: 1.65;
+}
+
+/* Conversation themes use their own result surface, outside the input box. */
+.agent-route-view {
+  width: min(100%, 1060px);
+  min-width: 0;
+  min-height: 0;
+  margin-inline: auto;
+  padding: 18px clamp(12px, 3vw, 32px) 30px;
+  overflow: auto;
+  align-self: stretch;
+}
+.agent-route-prompt {
+  width: fit-content;
+  max-width: 100%;
+  margin: 0 0 17px auto;
+  padding: 7px 12px;
+  border-radius: 11px;
+  font-size: 13px;
+}
+.is-codex .agent-route-prompt { background: #ececf3; }
+.is-claude .agent-route-prompt { background: #eee8df; }
+.agent-route-result { min-width: 0; }
+.is-codex .agent-route-result {
+  overflow: hidden;
+  border: 1px solid #dddfe7;
+  border-radius: 9px;
+  background: #fff;
+}
+.agent-route-file {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 13px;
+  border-bottom: 1px solid #dddfe7;
+  color: #45506a;
+  background: #f4f5f9;
+  font-size: 12px;
+}
+html[data-visual-theme="codex"] .agent-route-result .loafing-route-content,
+html[data-visual-theme="claude"] .agent-route-result .loafing-route-content { padding: clamp(10px, 2vw, 18px); }
+.is-claude .agent-route-result {
+  background: #fcfaf6;
+  border-top: 1px solid #e4ddd2;
+  border-bottom: 1px solid #e4ddd2;
+}
+html[data-visual-theme="codex"] .agent-route-result .ranking-event-wrapper {
+  grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
+  gap: 10px;
+}
+html[data-visual-theme="codex"] .agent-route-result :is(.ranking-panel, #event-info-box) {
+  gap: 8px;
+  padding: 10px 12px;
+  background: var(--document-surface);
+}
+html[data-visual-theme="claude"] .agent-route-result .ranking-event-wrapper {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 14px;
+}
+html[data-visual-theme="claude"] .agent-route-result #monthly-ranking-list {
+  max-height: min(230px, 34dvh);
+  overflow-y: auto;
+}
+html[data-visual-theme="claude"] .agent-route-result :is(.ranking-panel, #event-info-box) {
+  gap: 8px;
+  padding: 11px 0 0;
+  border: 0;
+  border-top: 1px solid var(--document-rule);
+  border-radius: 0;
+  background: transparent;
+}
+html[data-visual-theme="claude"] .agent-route-result .event-header h1,
+html[data-visual-theme="claude"] .agent-route-result :is(.showcase-hero, .notices-hero) h1 {
+  font-family: Georgia, "Noto Serif KR Variable", serif;
+}
+
+.cc-route-output {
+  width: min(1100px, calc(100% - 24px));
+  min-height: 0;
+  max-height: calc(100dvh - 90px);
+  margin: 8px auto;
+  overflow: auto;
+}
+.cc-route-command {
+  position: sticky;
+  z-index: 56;
+  top: 0;
+  padding: 7px 10px;
+  border-bottom: 1px solid #45433f;
+  color: #e5d8cd;
+  background: #24211f;
+  font: 13px/1.5 "Cascadia Mono", Consolas, monospace;
+}
+.cc-route-command span { color: #efaa87; }
+html[data-visual-theme="claude-code"] .cc-route-output .loafing-route-content { padding: 10px 12px 20px; }
+html[data-visual-theme="claude-code"] .cc-route-output :is(.ranking-panel, #event-info-box) {
+  gap: 6px;
+  padding: 8px 12px;
+  border: 0;
+  border-inline-start: 2px solid var(--document-rule);
+  border-radius: 0;
+  background: var(--document-surface);
+}
+
+html:is([data-visual-theme="vscode"], [data-visual-theme="codex"], [data-visual-theme="claude"], [data-visual-theme="claude-code"]) .loafing-route-content .prize-grid {
+  gap: 7px;
+}
+html:is([data-visual-theme="vscode"], [data-visual-theme="codex"], [data-visual-theme="claude"], [data-visual-theme="claude-code"]) .loafing-route-content :is(.event-description, .event-warning, .event-fine-print) {
+  margin: 0;
+  padding: 7px 0;
+  border: 0;
+  border-top: 1px solid var(--document-rule);
+  border-radius: 0;
+  color: var(--color-ink-muted-72);
+  background: transparent;
+  font-size: 12px;
+}
+
+@media (max-width: 1000px) {
+  html[data-visual-theme="vscode"] .loafing-route-content .ranking-event-wrapper,
+  html[data-visual-theme="codex"] .agent-route-result .ranking-event-wrapper {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

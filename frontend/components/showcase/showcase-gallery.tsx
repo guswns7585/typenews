@@ -258,7 +258,7 @@ export function ShowcaseGallery({ profileId = null }: { profileId?: string | nul
   const canManage = signedIn && (!profileId || Boolean(space?.is_owner));
 
   return (
-    <section className={styles.page}>
+    <section className={`${styles.page} showcase-page`}>
       {profileId && space ? <>
         <Link className={styles.personalBackLink} href="/showcase">← {t("전체 아카이브", "All archives")}</Link>
         <header className={styles.personalHero}>
@@ -277,7 +277,7 @@ export function ShowcaseGallery({ profileId = null }: { profileId?: string | nul
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={featuredItem.thumbnailUrl} alt="" /><strong>{featuredItem.title}</strong></Link> : <div className={styles.featuredEmpty}><span>{t("대표 키보드 없음", "No featured keyboard")}</span></div>}
         </header>
-      </> : <header className={styles.hero}>
+      </> : <header className={`${styles.hero} showcase-hero`}>
         <div>
           <h1 className={styles.heroTitle}>{profileId ? (profileName ? t(`${profileName}의 아카이브`, `${profileName}'s archive`) : t("사용자 아카이브", "User archive")) : t("아카이브", "Archive")}{!profileId ? <span className={styles.betaBadge}>Beta</span> : null}</h1>
           {profileId ? <Link className={styles.backLink} href="/showcase">← {t("전체 아카이브", "All archives")}</Link> : null}
@@ -308,14 +308,14 @@ export function ShowcaseGallery({ profileId = null }: { profileId?: string | nul
         </article>)}</div> : <div className={styles.hiddenAdminEmpty}>{t("숨긴 키보드가 없습니다", "No hidden keyboards")}</div>}
       </section> : null}
 
-      {!profileId ? <div className={styles.directoryTabs} role="tablist" aria-label={t("아카이브 보기 방식", "Archive view")}>
+      {!profileId ? <div className={`${styles.directoryTabs} showcase-view-tabs`} role="tablist" aria-label={t("아카이브 보기 방식", "Archive view")}>
         <button type="button" role="tab" aria-selected={directoryView === "spaces"} data-active={directoryView === "spaces"} onClick={() => setDirectoryView("spaces")}>{t("공간 둘러보기", "Explore spaces")}</button>
         <button type="button" role="tab" aria-selected={directoryView === "keyboards"} data-active={directoryView === "keyboards"} onClick={() => setDirectoryView("keyboards")}>{t("키보드 전체", "All keyboards")}</button>
       </div> : null}
 
       {!profileId && directoryView === "spaces" ? <ShowcaseSpaceDirectory /> : <>
 
-      <div className={styles.toolbar}>
+      <div className={`${styles.toolbar} showcase-toolbar`}>
         <strong>{t(`키보드 ${total.toLocaleString()}대`, `${total.toLocaleString()} keyboards`)}</strong>
         <div className={styles.discoveryControls}>
           <label className={styles.archiveSearch}><input type="search" maxLength={80} value={queryDraft} onChange={(event) => setQueryDraft(event.target.value)} placeholder={t("키보드·빌드·작성자 검색", "Search keyboards, builds, authors")} aria-label={t("아카이브 검색", "Search archive")} /></label>
@@ -330,16 +330,16 @@ export function ShowcaseGallery({ profileId = null }: { profileId?: string | nul
       {loading ? (
         <div className={styles.loading}><LoaderCircle className={styles.spinning} />{t("불러오는 중", "Loading")}</div>
       ) : items.length ? (
-        <div className={styles.grid}>
+        <div className={`${styles.grid} showcase-grid`}>
           {items.map((item) => (
-            <article className={styles.card} key={item.item_id}>
+            <article className={`${styles.card} showcase-card`} key={item.item_id}>
               {isAdmin ? <button type="button" className={styles.cardModerateButton} onClick={() => void hideItem(item)}><EyeOff size={14} />{t("숨김", "Hide")}</button> : null}
-              <Link className={styles.cardImage} href={`/showcase/${item.item_id}`}>
+              <Link className={`${styles.cardImage} showcase-card-image`} href={`/showcase/${item.item_id}`}>
                 {/* Private bucket URLs are short-lived and already point at optimized WebP files. */}
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={item.thumbnailUrl} alt={item.title} />
               </Link>
-              <div className={styles.cardBody}>
+              <div className={`${styles.cardBody} showcase-card-body`}>
                 <div className={styles.author}>
                   <span className={styles.avatar} data-empty={!item.profilePhotoUrl}>
                     {item.profilePhotoUrl ? (
@@ -358,7 +358,7 @@ export function ShowcaseGallery({ profileId = null }: { profileId?: string | nul
                 ) : (
                   <span className={styles.noAudio}>{t("타건음 없음", "No typing sound")}</span>
                 )}
-                <div className={styles.reactions}>
+                <div className={`${styles.reactions} showcase-card-reactions`}>
                   <button type="button" disabled={!authReady} data-active={item.liked_by_me} onClick={() => void toggle(item.item_id, "like")}>
                     <Heart size={16} fill={item.liked_by_me ? "currentColor" : "none"} />
                     {item.like_count}

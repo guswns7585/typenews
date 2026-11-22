@@ -3,14 +3,19 @@
 import { Minus, Square, TerminalSquare, X } from "lucide-react";
 import { SettingsMenu } from "@/components/settings/settings-menu";
 import { AnalyticsMenu } from "@/components/settings/analytics-menu";
+import { FeedbackPanel } from "@/components/feedback/feedback-panel";
+import { LoafingNavigation } from "@/components/layout/loafing-navigation";
+import { useUiLanguage } from "@/lib/ui-language";
 
 export function TerminalChrome({ showSettings }: { showSettings: boolean }) {
+  const { t } = useUiLanguage();
   return (
     <div className="terminal-chrome">
       <div className="terminal-titlebar">
         <span className="terminal-title"><TerminalSquare size={15} /> Command Prompt</span>
         <span className="terminal-path">C:\Windows\System32\cmd.exe</span>
         <div className="terminal-window-actions">
+          <FeedbackPanel triggerLabel={t("문제", "issue")} />
           {showSettings ? <><AnalyticsMenu /><SettingsMenu /></> : null}
           <span aria-hidden="true"><Minus size={14} /></span>
           <span aria-hidden="true"><Square size={11} /></span>
@@ -24,18 +29,21 @@ export function TerminalChrome({ showSettings }: { showSettings: boolean }) {
 export function TerminalWorkbench({ children }: { children: React.ReactNode }) {
   return (
     <section className="terminal-workbench">
-      <div className="terminal-output" aria-hidden="true">
+      <div className="terminal-output">
+        <div aria-hidden="true">
         <div>Microsoft Windows [Version 10.0.26100.4652]</div>
         <div>(c) Microsoft Corporation. All rights reserved.</div>
         <div>&nbsp;</div>
         <div>C:\Users\office&gt;cd Documents\quality-tools</div>
-        <div>C:\Users\office\Documents\quality-tools&gt;review-session --source typenews</div>
+        <div>C:\Users\office\Documents\quality-tools&gt;review-session --source daily-feed</div>
         <div>&nbsp;</div>
-        <div><span className="terminal-green">TypeNews Content Quality Console v2.7.4</span></div>
+        <div><span className="terminal-green">Content Quality Console v2.7.4</span></div>
         <div>Loading prompt queue........................ <span className="terminal-green">OK</span></div>
         <div>Connecting to review workspace.............. <span className="terminal-green">OK</span></div>
         <div>Session ready. Type the prompt exactly as displayed.</div>
         <div className="terminal-rule">-------------------------------------------------------------------------------</div>
+        </div>
+        <div className="terminal-nav-command"><span aria-hidden="true">C:\Users\office\Documents\quality-tools&gt;workspace </span><LoafingNavigation variant="terminal" /></div>
       </div>
       <div className="terminal-live-area">{children}</div>
       <div className="terminal-output terminal-after" aria-hidden="true">

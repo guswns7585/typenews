@@ -18,7 +18,7 @@ const CATEGORY_LABEL: Record<FeedbackCategory, [string, string]> = {
   bug: ["버그", "Bug"], feature: ["기능 제안", "Feature"], content: ["문장·콘텐츠", "Content"], other: ["기타", "Other"],
 };
 
-export function FeedbackPanel() {
+export function FeedbackPanel({ triggerLabel }: { triggerLabel?: string } = {}) {
   const { t } = useUiLanguage();
   const { signedIn } = useAuthProfile();
   const [open, setOpen] = useState(false);
@@ -98,7 +98,7 @@ export function FeedbackPanel() {
 
   return <div className="feedback-menu">
     <button type="button" className="chip-pill feedback-trigger" data-selected={open} aria-expanded={open} aria-haspopup="dialog" onClick={() => { setOpen((value) => !value); setDone(false); setMessage(""); }}>
-      <MessageSquareText size={14} />{t("건의함", "Feedback")}
+      <MessageSquareText size={14} />{triggerLabel ?? t("건의함", "Feedback")}
     </button>
     {open ? createPortal(<>
       <div className="settings-scrim" onClick={() => setOpen(false)} aria-hidden="true" />

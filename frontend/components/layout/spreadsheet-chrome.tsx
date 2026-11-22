@@ -10,16 +10,18 @@ import {
   Grid2X2,
   Grid3X3,
   Italic,
-  MessageSquare,
   PaintBucket,
   Search,
   Share2,
   Sigma,
   Underline,
 } from "lucide-react";
+import { usePathname } from "next/navigation";
 import type { InputHTMLAttributes, KeyboardEvent } from "react";
 import { SettingsMenu } from "@/components/settings/settings-menu";
 import { AnalyticsMenu } from "@/components/settings/analytics-menu";
+import { FeedbackPanel } from "@/components/feedback/feedback-panel";
+import { LoafingNavigation, loafingDocumentLabel } from "@/components/layout/loafing-navigation";
 import { useUiLanguage } from "@/lib/ui-language";
 import {
   spreadsheetCellValue,
@@ -67,7 +69,9 @@ function EditableCell({
 }
 
 export function SpreadsheetChrome({ showSettings }: { showSettings: boolean }) {
+  const pathname = usePathname();
   const { isEnglish, t } = useUiLanguage();
+  const documentName = loafingDocumentLabel(pathname, "spreadsheet", isEnglish);
   const ribbonTabs = isEnglish
     ? ["File", "Home", "Insert", "Share", "Page Layout", "Formulas", "Data", "Review", "View", "Help"]
     : ["파일", "홈", "삽입", "공유", "페이지 레이아웃", "수식", "데이터", "검토", "보기", "도움말"];
@@ -78,21 +82,21 @@ export function SpreadsheetChrome({ showSettings }: { showSettings: boolean }) {
         <div className="spreadsheet-quick" aria-hidden="true">
           <Grid3X3 size={16} />
           <FileSpreadsheet size={17} className="spreadsheet-app-mark" />
-          <span>{t("TypeNews 업무 현황", "TypeNews Operations")}</span>
+          <span>{documentName} · {t("콘텐츠 운영.xlsx", "content-operations.xlsx")}</span>
           <Cloud size={14} />
         </div>
         <span className="spreadsheet-title-search"><Search size={14} /> {t("도구, 도움말 등을 검색", "Search tools, help, and more")}</span>
         <div className="spreadsheet-title-actions">
-          <span className="spreadsheet-title-command" aria-hidden="true"><MessageSquare size={13} /> {t("메모", "Notes")}</span>
+          <FeedbackPanel triggerLabel={t("메모", "Notes")} />
           <span className="spreadsheet-title-command is-share" aria-hidden="true"><Share2 size={13} /> {t("공유", "Share")}</span>
           {showSettings ? <><AnalyticsMenu /><SettingsMenu /></> : null}
         </div>
       </div>
 
-      <div className="spreadsheet-ribbon-tabs" aria-hidden="true">
-        {ribbonTabs.map((tab, index) => (
-          <span key={tab} data-active={index === 1}>{tab}</span>
-        ))}
+      <div className="spreadsheet-ribbon-tabs">
+        <span aria-hidden="true">{ribbonTabs[0]}</span>
+        <LoafingNavigation variant="spreadsheet" />
+        {ribbonTabs.slice(4).map((tab) => <span key={tab} aria-hidden="true">{tab}</span>)}
       </div>
 
       <div className="spreadsheet-ribbon" aria-hidden="true">

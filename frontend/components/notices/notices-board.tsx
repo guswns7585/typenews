@@ -110,13 +110,13 @@ export function NoticesBoard() {
     : category === "maintenance" ? t("점검", "Maintenance") : t("업데이트", "Update");
 
   return (
-    <section className={styles.page}>
-      <header className={styles.hero}>
+    <section className={`${styles.page} notices-page`}>
+      <header className={`${styles.hero} notices-hero`}>
         <div><span>TYPE NEWS</span><h1>{t("새소식", "Updates")}</h1></div>
         {isAdmin ? <button type="button" className={styles.primaryButton} onClick={startNew}><Plus size={16} />{t("새 글", "New post")}</button> : null}
       </header>
       {message ? <p className={styles.message} role="status">{message}</p> : null}
-      {editorOpen ? <form className={styles.editor} onSubmit={(event) => void save(event)}>
+      {editorOpen ? <form className={`${styles.editor} notices-editor`} onSubmit={(event) => void save(event)}>
         <header><h2>{editingId ? t("새소식 수정", "Edit update") : t("새소식 작성", "Write update")}</h2><button type="button" onClick={() => setEditorOpen(false)} aria-label={t("닫기", "Close")}><X size={18} /></button></header>
         <label><span>{t("제목", "Title")}</span><input autoFocus maxLength={120} required value={draft.title} onChange={(event) => setDraft((current) => ({ ...current, title: event.target.value }))} /></label>
         <label><span>{t("내용", "Body")}</span><textarea rows={8} maxLength={5000} required value={draft.body} onChange={(event) => setDraft((current) => ({ ...current, body: event.target.value }))} /></label>
@@ -127,9 +127,9 @@ export function NoticesBoard() {
         </div>
         <footer><button type="button" onClick={() => setEditorOpen(false)}>{t("취소", "Cancel")}</button><button type="submit" className={styles.primaryButton} disabled={busy || !draft.title.trim() || !draft.body.trim()}>{busy ? <LoaderCircle className={styles.spinning} size={16} /> : null}{t("저장", "Save")}</button></footer>
       </form> : null}
-      {loading ? <div className={styles.loading}><LoaderCircle className={styles.spinning} />{t("불러오는 중", "Loading")}</div> : notices.length ? <div className={styles.list}>{notices.map((notice) => (
-        <article className={styles.notice} key={notice.notice_id} data-unpublished={!notice.is_published}>
-          <header><div className={styles.meta}>{notice.is_pinned ? <Pin size={13} /> : null}<span>{categoryLabel(notice.category)}</span>{!notice.is_published ? <b>{t("비공개", "Draft")}</b> : null}<time>{new Intl.DateTimeFormat(locale === "en" ? "en-US" : "ko-KR", { year: "numeric", month: "short", day: "numeric" }).format(new Date(notice.published_at))}</time></div>{isAdmin ? <div className={styles.actions}><button type="button" onClick={() => startEdit(notice)} aria-label={t("수정", "Edit")}><Pencil size={15} /></button><button type="button" onClick={() => void remove(notice)} aria-label={t("삭제", "Delete")}><Trash2 size={15} /></button></div> : null}</header>
+      {loading ? <div className={styles.loading}><LoaderCircle className={styles.spinning} />{t("불러오는 중", "Loading")}</div> : notices.length ? <div className={`${styles.list} notices-list`}>{notices.map((notice) => (
+        <article className={`${styles.notice} notice-entry`} key={notice.notice_id} data-unpublished={!notice.is_published}>
+          <header><div className={`${styles.meta} notice-meta`}>{notice.is_pinned ? <Pin size={13} /> : null}<span>{categoryLabel(notice.category)}</span>{!notice.is_published ? <b>{t("비공개", "Draft")}</b> : null}<time>{new Intl.DateTimeFormat(locale === "en" ? "en-US" : "ko-KR", { year: "numeric", month: "short", day: "numeric" }).format(new Date(notice.published_at))}</time></div>{isAdmin ? <div className={styles.actions}><button type="button" onClick={() => startEdit(notice)} aria-label={t("수정", "Edit")}><Pencil size={15} /></button><button type="button" onClick={() => void remove(notice)} aria-label={t("삭제", "Delete")}><Trash2 size={15} /></button></div> : null}</header>
           <h2>{notice.title}</h2><p>{notice.body}</p>
         </article>
       ))}</div> : <div className={styles.empty}>{t("아직 새소식이 없습니다", "No updates yet")}</div>}

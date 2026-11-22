@@ -147,16 +147,17 @@ export function ShowcaseDetail({ itemId }: { itemId: string }) {
   };
 
   return (
-    <article className={styles.detail}>
+    <article className={`${styles.detail} showcase-detail`}>
       <Link className={styles.backLink} href="/showcase">← {t("아카이브", "Archive")}</Link>
       {isAdmin ? <aside className={styles.inlineModeration}><div><ShieldAlert size={17} /><span>{t("관리자 도구", "Moderator tools")}</span></div><button type="button" onClick={() => void moderateItem("hide")}><EyeOff size={15} />{t("즉시 숨김", "Hide")}</button><button type="button" data-danger="true" onClick={() => void moderateItem("delete")}><Trash2 size={15} />{t("영구 삭제", "Delete")}</button></aside> : null}
-      <div className={styles.detailGrid}>
-        <div className={styles.detailMedia}>
+      <div className={`${styles.detailGrid} showcase-detail-grid`}>
+        <div className={`${styles.detailMedia} showcase-detail-media`}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={item.imageUrl} alt={item.title} />
+          <a className={styles.consoleImageLink} href={item.imageUrl} target="_blank" rel="noreferrer">{t("사진 열기", "Open image")}</a>
           {item.audioUrl ? <ShowcaseAudioPlayer src={item.audioUrl} label={t("타건음", "Typing sound")} durationHint={item.audio_duration_ms ? item.audio_duration_ms / 1000 : undefined} /> : <span className={styles.noAudio}>{t("타건음 없음", "No typing sound")}</span>}
         </div>
-        <div className={styles.detailCopy}>
+        <div className={`${styles.detailCopy} showcase-detail-copy`}>
           <div className={styles.detailAuthor}>
             <span className={styles.avatar} data-empty={!item.profilePhotoUrl}>
               {item.profilePhotoUrl ? (
@@ -181,7 +182,7 @@ export function ShowcaseDetail({ itemId }: { itemId: string }) {
           {message ? <p className={styles.pageMessage}>{message}</p> : null}
         </div>
       </div>
-      {buildSections.length ? <section className={styles.detailBuildPanel}>
+      {buildSections.length ? <section className={`${styles.detailBuildPanel} showcase-build-panel`}>
         <h2>{t("빌드 정보", "Build information")}</h2>
         <div className={styles.buildDocument}>{buildSections.map((section) => (
           <section key={section.id}><h3>{isEnglish ? section.labelEn : section.label}</h3><dl className={styles.buildList}>{section.fields.map((key) => {

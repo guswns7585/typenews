@@ -14,12 +14,17 @@ import {
   Search,
   Settings2,
 } from "lucide-react";
+import { usePathname } from "next/navigation";
 import { SettingsMenu } from "@/components/settings/settings-menu";
 import { AnalyticsMenu } from "@/components/settings/analytics-menu";
+import { FeedbackPanel } from "@/components/feedback/feedback-panel";
+import { LoafingNavigation, loafingDocumentLabel } from "@/components/layout/loafing-navigation";
 import { useUiLanguage } from "@/lib/ui-language";
 
 export function VscodeChrome({ showSettings }: { showSettings: boolean }) {
+  const pathname = usePathname();
   const { isEnglish } = useUiLanguage();
+  const documentName = loafingDocumentLabel(pathname, "vscode", isEnglish);
   const menuItems = isEnglish
     ? ["File", "Edit", "Selection", "View", "Go", "Run", "Terminal", "Help"]
     : ["파일", "편집", "선택 영역", "보기", "이동", "실행", "터미널", "도움말"];
@@ -31,28 +36,31 @@ export function VscodeChrome({ showSettings }: { showSettings: boolean }) {
           {menuItems.map((item) => <span key={item}>{item}</span>)}
         </div>
         <div className="vscode-command" aria-hidden="true">
-          <Search size={13} /> TypeNews
+          <Search size={13} /> content-quality
         </div>
         <div className="vscode-title-actions">
           <span aria-hidden="true"><PanelBottom size={15} /></span>
+          <FeedbackPanel triggerLabel={isEnglish ? "Issues" : "문제"} />
           {showSettings ? <><AnalyticsMenu /><SettingsMenu /></> : null}
         </div>
       </div>
       <div className="vscode-nav-row" aria-hidden="true">
         <ChevronLeft size={16} />
         <ChevronRight size={16} />
-        <span>TypeNews</span>
+        <span>content-quality</span>
         <span>/</span>
-        <strong>quality-monitor.ts</strong>
+        <strong>{documentName}</strong>
       </div>
     </div>
   );
 }
 
 export function VscodeWorkbench({ children }: { children: React.ReactNode }) {
-  const { t } = useUiLanguage();
+  const pathname = usePathname();
+  const { isEnglish, t } = useUiLanguage();
+  const documentName = loafingDocumentLabel(pathname, "vscode", isEnglish);
   return (
-    <div className="vscode-workbench">
+    <div className="vscode-workbench" data-loafing-page={pathname === "/" ? undefined : "true"}>
       <aside className="vscode-activity" aria-hidden="true">
         <Files size={24} className="is-active" />
         <Search size={23} />
@@ -63,15 +71,12 @@ export function VscodeWorkbench({ children }: { children: React.ReactNode }) {
         <CircleUserRound size={23} />
         <Settings2 size={23} />
       </aside>
-      <aside className="vscode-explorer" aria-hidden="true">
+      <aside className="vscode-explorer">
         <div className="vscode-explorer-title">{t("탐색기", "EXPLORER")}</div>
-        <div className="vscode-project-title">⌄ TYPENEWS</div>
+        <div className="vscode-project-title">⌄ CONTENT-QUALITY</div>
         <div className="vscode-file-tree">
           <span>⌄ src</span>
-          <span className="is-nested">TS quality-monitor.ts</span>
-          <span className="is-nested">TS prompt-normalizer.ts</span>
-          <span className="is-nested">JSON review-queue.json</span>
-          <span className="is-nested">MD operations-notes.md</span>
+          <LoafingNavigation variant="vscode" />
           <span>⌄ reports</span>
           <span className="is-nested">CSV quality-summary.csv</span>
         </div>
@@ -81,7 +86,7 @@ export function VscodeWorkbench({ children }: { children: React.ReactNode }) {
       <section className="vscode-editor">
         <div className="vscode-editor-tab" aria-hidden="true">
           <Braces size={14} />
-          <span>quality-monitor.ts</span>
+          <span>{documentName}</span>
           <b>×</b>
         </div>
         <div className="vscode-editor-canvas">

@@ -309,7 +309,12 @@ export function MonthlyRanking() {
           </ul>
         </section>
       ) : null}
-      <ul id="monthly-ranking-list">
+      <div className="ranking-column-head" aria-hidden="true">
+        <span>{t("순위", "Rank")}</span>
+        <span>{t("닉네임", "Name")}</span>
+        <span>{t("점수", "Score")}</span>
+      </div>
+      <ul id="monthly-ranking-list" tabIndex={0} aria-label={t("월간 순위 목록", "Monthly ranking list")}>
         {statusText ? (
           <li style={{ fontSize: 14, color: "var(--color-ink-muted-48)", listStyle: "none" }}>{statusText}</li>
         ) : (
