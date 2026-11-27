@@ -1,4 +1,4 @@
-import { finalizeRecordingBlob, FPS, MAX_BYTES, MAX_SECONDS, recorderFor, stopTracks, waitForMedia } from "./media";
+import { finalizeRecordingBlob, FPS, MAX_BYTES, MAX_SECONDS, recorderFor, resumeRecordingAudio, stopTracks, waitForMedia } from "./media";
 
 /** Decode and re-record only [start, end]; Blob slicing cannot trim encoded media. */
 export async function trimRecording(blob: Blob, start: number, end: number, signal: AbortSignal,
@@ -12,6 +12,7 @@ export async function trimRecording(blob: Blob, start: number, end: number, sign
   const url = URL.createObjectURL(blob);
   let stream: MediaStream | undefined;
   let audio: AudioContext | undefined;
+  let audioStream: MediaStream | undefined;
   let recorder: MediaRecorder | undefined;
   let timer: ReturnType<typeof setInterval> | undefined;
   let timeout: ReturnType<typeof setTimeout> | undefined;
@@ -19,9 +20,16 @@ export async function trimRecording(blob: Blob, start: number, end: number, sign
   let visibility: (() => void) | undefined;
   try {
     signal.throwIfAborted();
+    // Route the original audio without playing it through the speakers.
+    audio = new AudioContext();
+    const source = audio.createMediaElementSource(video);
+    const destination = audio.createMediaStreamDestination();
+    source.connect(destination);
+    audioStream = destination.stream;
     const loaded = waitForMedia(video, "loadeddata", signal);
     video.src = url;
-    await loaded;
+    await Promise.all([loaded, resumeRecordingAudio(audio, signal, 3000,
+      "내보내기용 오디오를 시작하지 못했습니다. 이 탭에서 다시 시도해 주세요.")]);
     if (start > 0) {
       const seeked = waitForMedia(video, "seeked", signal);
       video.currentTime = start;
@@ -34,15 +42,7 @@ export async function trimRecording(blob: Blob, start: number, end: number, sign
     if (!context || !canvas.width || !canvas.height) throw new Error("영상을 디코딩할 수 없습니다.");
     context.drawImage(video, 0, 0);
     stream = canvas.captureStream(FPS);
-    // Web Audio routes the decoded original audio into the new recorder without
-    // requiring the less portable HTMLMediaElement.captureStream API or speakers.
-    audio = new AudioContext();
-    const source = audio.createMediaElementSource(video);
-    const destination = audio.createMediaStreamDestination();
-    source.connect(destination);
-    destination.stream.getAudioTracks().forEach((track) => stream!.addTrack(track));
-    await audio.resume();
-    if (audio.state !== "running") throw new Error("오디오 인코더를 시작할 수 없습니다. 다시 시도해 주세요.");
+    audioStream.getAudioTracks().forEach((track) => stream!.addTrack(track));
     recorder = recorderFor(stream);
     const result = await new Promise<Blob>((resolve, reject) => {
       const chunks: Blob[] = [];
@@ -98,9 +98,9 @@ export async function trimRecording(blob: Blob, start: number, end: number, sign
     if (abort) signal.removeEventListener("abort", abort);
     if (visibility) document.removeEventListener("visibilitychange", visibility);
     if (recorder && recorder.state !== "inactive") recorder.stop();
-    stopTracks(stream);
+    stopTracks(stream ?? audioStream);
     video.pause(); video.removeAttribute("src"); video.load();
     URL.revokeObjectURL(url);
-    if (audio && audio.state !== "closed") await audio.close();
+    if (audio && audio.state !== "closed") void audio.close().catch(() => {});
   }
 }

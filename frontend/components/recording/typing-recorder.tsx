@@ -3,7 +3,7 @@
 import { useEffect, useId, useRef, useState, type RefObject } from "react";
 import { CheckCircle2, Circle, LoaderCircle, Mic, Square, Video, X } from "lucide-react";
 import { createPortal } from "react-dom";
-import { CaptureSharing, startCapture, type RecordingResult } from "@/features/recording/capture";
+import { CaptureSharing, startCapture, type CaptureSetupStep, type RecordingResult } from "@/features/recording/capture";
 import type { TrimRange } from "@/features/recording/editor";
 import { downloadRecording, MAX_SECONDS, recordingError } from "@/features/recording/media";
 import { trimRecording } from "@/features/recording/trim";
@@ -34,6 +34,7 @@ export function TypingRecorder({ targetRef, disabled = false, targetSelector = "
   const [setup, setSetup] = useState(false);
   const [microphone, setMicrophone] = useState(true);
   const [phase, setPhase] = useState<"idle" | "starting" | "recording">("idle");
+  const [setupStep, setSetupStep] = useState<CaptureSetupStep>("sharing");
   const [seconds, setSeconds] = useState(0);
   const [recording, setRecording] = useState<RecordingResult | null>(null);
   const [resumeRange, setResumeRange] = useState<TrimRange | null>(null);
@@ -74,12 +75,14 @@ export function TypingRecorder({ targetRef, disabled = false, targetSelector = "
     if (operation.current || disabled) return;
     const controller = new AbortController();
     operation.current = controller;
+    setSetupStep("sharing");
     setSetup(false); setError(""); setPhase("starting"); setSeconds(0);
     try {
       sharing.current ??= new CaptureSharing(setSharingActive);
       const session = await startCapture({
         target: () => targetRef.current ?? document.querySelector<HTMLElement>(targetSelector),
         microphone: archiveDraftId ? true : microphone, signal: controller.signal, sharing: sharing.current,
+        onSetupStep: setSetupStep,
         onComplete: (result) => {
           if (controller.signal.aborted) return;
           capture.current = null; operation.current = null;
@@ -178,6 +181,11 @@ export function TypingRecorder({ targetRef, disabled = false, targetSelector = "
     if (source) { setResumeRange(range ?? null); setRecording(source); }
   }
   const exporting = exportState?.phase === "working";
+  const setupStatus = {
+    sharing: t("공유할 탭 선택 중…", "Waiting for tab selection…"),
+    microphone: t("마이크 연결 중…", "Connecting microphone…"),
+    video: t("탭 영상 준비 중…", "Preparing tab video…"),
+  };
   const label = phase === "recording" ? t("녹화 중지", "Stop recording") : phase === "starting" ? t("녹화 준비 취소", "Cancel recording setup") : exporting ? (archiveDraftId ? t("타건음 준비 중", "Preparing typing sound") : t("영상 저장 중", "Exporting video")) : sharingActive ? t("바로 다시 녹화", "Record again") : archiveDraftId ? t("아카이브 타건음 녹화", "Record archive typing sound") : t("타이핑 녹화", "Record typing");
   return <div className={styles.root} data-dock-interactive="true">
     <button type="button" className={`${styles.dockButton} ${phase === "recording" ? styles.active : ""}`}
@@ -193,13 +201,13 @@ export function TypingRecorder({ targetRef, disabled = false, targetSelector = "
     </button>
     <span id={tooltip} role="tooltip" className={styles.tooltip}>{label}</span>
     {phase === "recording" && <span className={styles.elapsed} role="timer" aria-label={t("녹화 시간", "Recording duration")}><Circle size={8} fill="currentColor" aria-hidden="true" /> {Math.floor(seconds / 60)}:{String(seconds % 60).padStart(2, "0")}</span>}
-    {phase === "starting" && <span className={styles.elapsed} role="status">{t("공유 선택 중…", "Waiting for tab selection…")}</span>}
+    {phase === "starting" && <span className={styles.elapsed} role="status">{setupStatus[setupStep]}</span>}
     {sharingActive && phase === "idle" && <button type="button" className={styles.sharing}
       data-dock-interactive="true" onClick={() => sharing.current?.close()}
       title={t("화면 공유 연결을 완전히 종료합니다. 다시 녹화하려면 허용이 필요합니다.", "Disconnect screen sharing. Recording again will require permission.")}>
       {t("공유 연결 중 · 끊기", "Sharing connected · Disconnect")}
     </button>}
-    {error && <div className={styles.message} role="alert">{error}<button className={styles.icon} type="button" onClick={() => setError("")} aria-label={t("오류 닫기", "Dismiss error")}><X size={16} aria-hidden="true" /></button></div>}
+    {error && createPortal(<div className={styles.message} role="alert">{error}<button className={styles.icon} type="button" onClick={() => setError("")} aria-label={t("오류 닫기", "Dismiss error")}><X size={16} aria-hidden="true" /></button></div>, document.body)}
     {exportState && createPortal(<div className={`${styles.exportToast} ${styles[exportState.phase]}`} role={exportState.phase === "error" ? "alert" : "status"}>
       {exportState.phase === "working" ? <LoaderCircle size={18} className={styles.spinning} aria-hidden="true" /> : exportState.phase === "done" ? <CheckCircle2 size={18} aria-hidden="true" /> : null}
       <div><strong>{exportState.message}</strong>{exportState.phase === "working" && <progress max="1" value={exportState.progress} aria-label={t("영상 저장 진행률", "Video export progress")} />}</div>

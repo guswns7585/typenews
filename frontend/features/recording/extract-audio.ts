@@ -1,6 +1,6 @@
 import { SHOWCASE_MEDIA_LIMITS } from "@/features/showcase/media";
 import fixWebmDuration from "fix-webm-duration";
-import { stopTracks, waitForMedia } from "./media";
+import { resumeRecordingAudio, stopTracks, waitForMedia } from "./media";
 
 function audioRecorder(stream: MediaStream) {
   const candidates = [
@@ -40,21 +40,22 @@ export async function extractRecordingAudio(
   let timeout: ReturnType<typeof setTimeout> | undefined;
   try {
     signal.throwIfAborted();
-    const loaded = waitForMedia(video, "loadeddata", signal);
-    video.src = url;
-    await loaded;
-    if (start > 0) {
-      const seeked = waitForMedia(video, "seeked", signal);
-      video.currentTime = start;
-      await seeked;
-    }
     context = new AudioContext();
     const source = context.createMediaElementSource(video);
     const destination = context.createMediaStreamDestination();
     source.connect(destination);
     output = destination.stream;
-    await context.resume();
-    if (context.state !== "running") throw new Error("오디오 변환을 시작할 수 없습니다.");
+    const loaded = waitForMedia(video, "loadeddata", signal);
+    video.src = url;
+    // Start Web Audio while the click that initiated export is still active.
+    await Promise.all([loaded, resumeRecordingAudio(context, signal, 3000,
+      "타건음 변환을 시작하지 못했습니다. 이 탭에서 다시 시도해 주세요.")]);
+    if (start > 0) {
+      const seeked = waitForMedia(video, "seeked", signal);
+      video.currentTime = start;
+      await seeked;
+    }
+    signal.throwIfAborted();
     const selected = audioRecorder(output);
     recorder = selected.recorder;
     const result = await new Promise<File>((resolve, reject) => {
@@ -129,6 +130,6 @@ export async function extractRecordingAudio(
     video.removeAttribute("src");
     video.load();
     URL.revokeObjectURL(url);
-    if (context && context.state !== "closed") await context.close();
+    if (context && context.state !== "closed") void context.close().catch(() => {});
   }
 }

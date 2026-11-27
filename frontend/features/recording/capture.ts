@@ -1,4 +1,4 @@
-import { finalizeRecordingBlob, FPS, MAX_BYTES, MAX_SECONDS, recorderFor, stopTracks, waitForMedia } from "./media";
+import { finalizeRecordingBlob, FPS, MAX_BYTES, MAX_SECONDS, recorderFor, stopTracks, waitForMedia, waitForRecordingStep } from "./media";
 import { enhanceTypingAudio } from "./audio";
 import { buildWaveform } from "./waveform";
 
@@ -16,6 +16,7 @@ type CaptureDevices = MediaDevices & {
 };
 type CaptureTrack = MediaStreamTrack & { getCaptureHandle?: () => { handle?: string } | null };
 export type RecordingResult = { blob: Blob; duration: number; notice?: string; waveform?: number[] };
+export type CaptureSetupStep = "sharing" | "microphone" | "video";
 
 /** Sharing UI and closing the setup dialog can briefly change the layout. */
 async function stableTarget(target: () => HTMLElement | null, signal: AbortSignal) {
@@ -108,6 +109,7 @@ export async function startCapture(options: {
   microphone: boolean;
   signal: AbortSignal;
   sharing?: CaptureSharing;
+  onSetupStep?: (step: CaptureSetupStep) => void;
   onComplete: (result: RecordingResult) => void;
   onError: (error: unknown) => void;
 }): Promise<{ stop: () => void }> {
@@ -128,6 +130,7 @@ export async function startCapture(options: {
   let ended = 0;
   let notice: string | undefined;
   const waveformSamples: number[] = [];
+  let microphoneWasUnmuted = false;
   let failed = false;
   let layoutLocked = true;
   lockRecordingLayout(true);
@@ -146,11 +149,12 @@ export async function startCapture(options: {
     signal.removeEventListener("abort", cancel);
     document.removeEventListener("visibilitychange", visibility);
     removeListeners.splice(0).forEach((remove) => remove());
-    stopTracks(output); stopTracks(mic);
+    stopTracks(output); output = undefined;
+    stopTracks(mic); mic = undefined;
     enhancedMic?.close(); enhancedMic = undefined;
     if (!retainSharing) {
       if (options.sharing) options.sharing.close(handle);
-      stopTracks(display);
+      stopTracks(display); display = undefined;
     }
     video.pause(); video.srcObject = null;
     video.remove?.();
@@ -201,16 +205,39 @@ export async function startCapture(options: {
       track.removeEventListener("capturehandlechange", sourceChanged);
     });
     if (options.microphone) {
-      mic = await devices.getUserMedia({ audio: { noiseSuppression: false, echoCancellation: false, autoGainControl: false }, video: false });
+      options.onSetupStep?.("microphone");
+      try {
+        const request = devices.getUserMedia({
+          audio: { noiseSuppression: false, echoCancellation: false, autoGainControl: false }, video: false,
+        }).then((stream) => {
+          // A dismissed setup cannot cancel the browser's native permission prompt.
+          if (preparing.signal.aborted) stopTracks(stream);
+          return stream;
+        });
+        mic = await waitForRecordingStep(request, 45_000,
+          "마이크 응답 시간이 초과됐습니다. 브라우저의 마이크 권한을 확인해 주세요.", preparing.signal);
+      } catch (error) {
+        if (error instanceof DOMException) {
+          if (error.name === "NotAllowedError") {
+            throw new Error("마이크 권한이 차단됐습니다. 브라우저의 사이트 설정과 운영체제의 마이크 권한을 확인해 주세요.", { cause: error });
+          }
+          if (error.name === "NotFoundError" || error.name === "NotReadableError") {
+            throw new Error("마이크를 사용할 수 없습니다. 입력 장치가 연결돼 있는지, 다른 앱이 사용 중인지 확인해 주세요.", { cause: error });
+          }
+        }
+        throw error;
+      }
       signal.throwIfAborted();
       if (ended) throw new Error("마이크 권한 확인 중 탭 공유가 종료되었습니다.");
       if (!mic.getAudioTracks().length || mic.getAudioTracks().some((audio) => audio.readyState !== "live")) throw new Error("마이크 연결이 종료되었습니다.");
       mic.getAudioTracks().forEach((audio) => audio.addEventListener("ended", () => stop("마이크 연결이 종료되었습니다."), { once: true }));
-      enhancedMic = await enhanceTypingAudio(mic);
+      enhancedMic = await enhanceTypingAudio(mic, preparing.signal);
     }
+    options.onSetupStep?.("video");
+    const loaded = waitForMedia(video, "loadeddata", preparing.signal, "탭 영상의 첫 프레임을 받지 못했습니다. 현재 탭을 열어 두고 다시 시도해 주세요.");
     video.srcObject = display;
-    const loaded = waitForMedia(video, "loadeddata", preparing.signal);
-    await Promise.all([video.play(), loaded]);
+    await Promise.all([loaded, waitForRecordingStep(video.play(), 15_000,
+      "탭 영상을 재생하지 못했습니다. 공유 연결을 끊고 다시 시도해 주세요.", preparing.signal)]);
     signal.throwIfAborted();
     if (ended || track.readyState !== "live") throw new Error("공유가 시작되기 전에 종료되었습니다.");
     const canvas = document.createElement("canvas");
@@ -219,6 +246,7 @@ export async function startCapture(options: {
     const initial = await stableTarget(options.target, preparing.signal);
     signal.throwIfAborted();
     if (ended) throw new Error(notice || "공유가 시작되기 전에 종료되었습니다.");
+    if (document.hidden) throw new Error("현재 TypeNews 탭을 화면에 표시한 상태에서 다시 녹화해 주세요.");
     // Keep the source uncropped. Native crop reconfiguration can stall on a
     // static tab or report dimensions different from a fractional DOM rectangle.
     // loadeddata already provides a drawable frame; drawImage crops the output.
@@ -283,9 +311,12 @@ export async function startCapture(options: {
       if (chunks.length) {
         const duration = Math.min(MAX_SECONDS, ((ended || performance.now()) - started) / 1000);
         const raw = new Blob(chunks, { type: recorder!.mimeType });
+        const microphoneNotice = options.microphone && !microphoneWasUnmuted
+          ? "녹화 중 마이크 신호를 받지 못했습니다. 브라우저에서 선택한 입력 장치와 음소거 상태를 확인해 주세요."
+          : undefined;
         void finalizeRecordingBlob(raw, duration)
           .then((blob) => options.onComplete({
-            blob, duration, notice,
+            blob, duration, notice: [notice, microphoneNotice].filter(Boolean).join(" ") || undefined,
             waveform: buildWaveform(waveformSamples),
           }))
           .catch(() => options.onError(new Error("업로드 가능한 영상 파일로 마무리하지 못했습니다. 다시 녹화해 주세요.")));
@@ -294,14 +325,14 @@ export async function startCapture(options: {
     };
     recorder.start(250);
     started = performance.now();
-    draw();
-    if (enhancedMic) waveformSamples.push(enhancedMic.sampleLevel());
-    frame = setInterval(() => {
+    const recordFrame = () => {
       try {
         draw();
+        microphoneWasUnmuted ||= mic?.getAudioTracks().some((audio) => !audio.muted) ?? false;
         if (enhancedMic) waveformSamples.push(enhancedMic.sampleLevel());
       } catch (error) { stop(error instanceof Error ? error.message : "캡처 오류"); }
-    }, 1000 / FPS);
+    };
+    frame = setInterval(recordFrame, 1000 / FPS);
     deadline = setTimeout(() => stop("5분 제한에 도달했습니다."), MAX_SECONDS * 1000);
     document.addEventListener("visibilitychange", visibility);
     return { stop: () => stop(undefined, true) };

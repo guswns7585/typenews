@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { afterEach, test } from "node:test";
 import { startCapture } from "./capture";
-import { MAX_BYTES, recorderFor } from "./media";
+import { MAX_BYTES, recorderFor, resumeRecordingAudio } from "./media";
 import { trimRecording } from "./trim";
 
 const originals = new Map<string, PropertyDescriptor | undefined>();
@@ -76,7 +76,7 @@ test("cancellation during chooser stops the late-arriving stream", async () => {
 
 test("mic denial closes the verified display stream", async () => {
   const mock = setup("browser", true);
-  await assert.rejects(startCapture({ ...options(), microphone: true }), { name: "NotAllowedError" });
+  await assert.rejects(startCapture({ ...options(), microphone: true }), /마이크 권한이 차단/);
   assert.equal(mock.stopped(), 1);
 });
 
@@ -94,8 +94,12 @@ test("mic removal while waiting for video immediately rejects and closes both st
   let stopped = false;
   const micTrack = Object.assign(new EventTarget(), { readyState: "live", stop: () => { stopped = true; } });
   mock.devices.getUserMedia = async () => ({ getTracks: () => [micTrack], getAudioTracks: () => [micTrack] }) as unknown as MediaStream;
-  const result = startCapture({ ...options(), microphone: true });
-  await Promise.resolve(); await Promise.resolve();
+  let videoStarted!: () => void;
+  const waitingForVideo = new Promise<void>((resolve) => { videoStarted = resolve; });
+  const result = startCapture({ ...options(), microphone: true, onSetupStep: (step) => {
+    if (step === "video") videoStarted();
+  } });
+  await waitingForVideo;
   micTrack.dispatchEvent(new Event("ended"));
   await assert.rejects(result, /마이크 연결이 종료/);
   assert.equal(stopped, true);
@@ -131,6 +135,43 @@ test("MIME negotiation prefers H.264 MP4 and broadly supported VP8 fallback", ()
 
 test("recording size stays below DCInside's decimal 50 MB limit", () => {
   assert.ok(MAX_BYTES < 50_000_000);
+});
+
+test("a cancelled microphone prompt releases tab sharing and stops the late stream", async () => {
+  const mock = setup("browser", true);
+  const controller = new AbortController();
+  let resolveMicrophone!: (stream: MediaStream) => void;
+  let stopped = 0;
+  mock.devices.getUserMedia = () => new Promise((resolve) => { resolveMicrophone = resolve; });
+  const pending = startCapture({ ...options(controller.signal), microphone: true });
+  await Promise.resolve();
+  assert.ok(resolveMicrophone);
+  controller.abort();
+  await assert.rejects(pending, { name: "AbortError" });
+  assert.equal(mock.stopped(), 1);
+  resolveMicrophone({ getTracks: () => [{ stop: () => { stopped++; } }] } as unknown as MediaStream);
+  await Promise.resolve();
+  assert.equal(stopped, 1);
+});
+
+test("audio initialization times out and can also be cancelled immediately", async () => {
+  const context = { state: "suspended", resume: () => new Promise(() => {}) } as unknown as AudioContext;
+  await assert.rejects(resumeRecordingAudio(context, undefined, 1, "Audio did not start"), /Audio did not start/);
+  const controller = new AbortController();
+  const pending = resumeRecordingAudio(context, controller.signal, 3000, "Audio did not start");
+  controller.abort();
+  await assert.rejects(pending, { name: "AbortError" });
+});
+
+test("an advertised codec that the recorder cannot open falls back to another codec", () => {
+  globalValue("MediaRecorder", class {
+    static isTypeSupported() { return true; }
+    constructor(_stream: MediaStream, public options: MediaRecorderOptions) {
+      if (options.mimeType?.startsWith("video/mp4")) throw new DOMException("Unavailable", "NotSupportedError");
+    }
+  });
+  const recorder = recorderFor({} as MediaStream);
+  assert.equal((recorder as unknown as { options: MediaRecorderOptions }).options.mimeType, "video/webm;codecs=vp8,opus");
 });
 
 test("a cancelled chooser's late cleanup preserves the next chooser handle", async () => {
