@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { alignInput } from "../features/typing-engine/alignment";
+import { alignInput, overlayCaretBoundary } from "../features/typing-engine/alignment";
 import {
   shouldSubmitTypingKey,
   virtualSpaceSubmissionValue,
@@ -49,6 +49,15 @@ const leadingCursor = alignInput("[NASA] 발사 성공", "", {
   ignoreSymbols: true,
 });
 assert.equal(leadingCursor.cursorAfterIndex, 6);
+assert.equal(overlayCaretBoundary(leadingCursor, "", 0), 7);
+assert.equal(overlayCaretBoundary(leadingIgnored, "발", 0), 7);
+
+const editingInput = "가😀나";
+const editing = alignInput("가😀나.", editingInput, baseSettings);
+assert.equal(overlayCaretBoundary(editing, editingInput, 0), 0);
+assert.equal(overlayCaretBoundary(editing, editingInput, 1), 1);
+assert.equal(overlayCaretBoundary(editing, editingInput, 3), 2);
+assert.equal(overlayCaretBoundary(editing, editingInput, 4), 3);
 
 const ignoredBetweenSpaces = alignInput("뉴스 -  속보", "뉴스 속", {
   ...baseSettings,

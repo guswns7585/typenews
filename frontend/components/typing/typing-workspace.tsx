@@ -40,7 +40,7 @@ import {
   toLines,
   type ScriptureItem,
 } from "@/features/scripture/scripture-library";
-import { alignInput, isIgnoredCharacter } from "@/features/typing-engine/alignment";
+import { alignInput, isIgnoredCharacter, overlayCaretBoundary } from "@/features/typing-engine/alignment";
 import { keystrokesForCharacter } from "@/features/typing-engine/keystrokes";
 import { playKeyboardSound, preloadKeyboardSound } from "@/features/typing-engine/keyboard-sound";
 import { calculateMetrics } from "@/features/typing-engine/metrics";
@@ -1289,9 +1289,8 @@ export function TypingWorkspace() {
   // 커서를 목표 글자 옆으로 옮긴다. 위치만 바꾸므로 CSS transition이 이어받는다.
   useLayoutEffect(() => {
     const cursor = cursorRef.current;
-    // 단어 모드에서는 아예 렌더하지 않으므로 ref가 비어 있다.
     if (!cursor) return;
-    if (!settings.overlayMode || !sentence || isWordMode) {
+    if (!settings.overlayMode || !sentence) {
       cursor.style.opacity = "0";
       return;
     }
@@ -1307,7 +1306,11 @@ export function TypingWorkspace() {
     const cellAt = (i: number) =>
       parent.querySelector<HTMLElement>(`[data-char-index="${i}"]`) ?? null;
 
-    const index = alignment.cursorAfterIndex;
+    const field = inputRef.current;
+    const offset = field?.selectionDirection === "backward"
+      ? field.selectionStart
+      : field?.selectionEnd ?? input.length;
+    const index = overlayCaretBoundary(alignment, input, offset) - 1;
 
     /* 커서는 "다음에 칠 글자가 놓일 자리"에 서야 한다.
        예전에는 직전 글자의 오른쪽 끝(offsetLeft + offsetWidth)을 썼는데, 같은 줄
@@ -1331,8 +1334,13 @@ export function TypingWorkspace() {
        cursor는 #sentence 패딩 박스를 기준으로 절대 배치되므로 그 좌표로 환산한다. */
     const parentRect = parent.getBoundingClientRect();
     const rect = anchor.getBoundingClientRect();
-    const x = rect.left - parentRect.left - parent.clientLeft + (nextCell ? 0 : rect.width);
-    const y = rect.top - parentRect.top - parent.clientTop;
+    // Word slots scale as they enter the dial. The cursor shares that transform,
+    // so convert measured screen positions back to local coordinates.
+    const slot = isWordMode ? parent.closest(".word-slot") : null;
+    const slotTransform = slot ? getComputedStyle(slot).transform : "none";
+    const slotScale = slotTransform === "none" ? 1 : new DOMMatrixReadOnly(slotTransform).a;
+    const x = (rect.left - parentRect.left + (nextCell ? 0 : rect.width)) / slotScale - parent.clientLeft;
+    const y = (rect.top - parentRect.top) / slotScale - parent.clientTop;
 
     /* 커서 높이를 잰 글자에서 그대로 가져온다.
        예전에는 CSS에 `height: 1.1em; margin-top: 0.28em`으로 못 박아 뒀는데,
@@ -1340,10 +1348,10 @@ export function TypingWorkspace() {
        글꼴의 ascent+descent라 글꼴마다 다르고, 웹폰트가 늦게 로드되는 동안에는
        대체 글꼴 값이 잡힌다. 그래서 환경에 따라 커서가 글자보다 내려가 보였다.
        실측값을 쓰면 어떤 글꼴에서도 글자 상자와 정확히 겹친다. */
-    cursor.style.height = `${rect.height}px`;
+    cursor.style.height = `${rect.height / slotScale}px`;
     cursor.style.opacity = "1";
     cursor.style.transform = `translate(${x}px, ${y}px)`;
-  }, [alignment, settings.overlayMode, settings.fontFamily, settings.fontSize, sentence, isWordMode, usesLineDial, cursorMeasureTick]);
+  }, [alignment, input, settings.overlayMode, settings.fontFamily, settings.fontSize, sentence, isWordMode, usesLineDial, cursorMeasureTick]);
 
   /**
    * 점수를 대기열에 담고 바로 보낸다.
@@ -1906,7 +1914,10 @@ export function TypingWorkspace() {
                           <span className="word-sizer" aria-hidden="true">
                             {word}
                           </span>
-                          <span className="word-typed">{characterSpans}</span>
+                          <span className="word-typed">
+                            {characterSpans}
+                            <span className="virtual-cursor" ref={cursorRef} aria-hidden="true" />
+                          </span>
                         </>
                       ) : (
                         word
@@ -1956,8 +1967,7 @@ export function TypingWorkspace() {
             ) : null}
             <span className="vscode-live-suffix" aria-hidden="true">&quot;;</span>
 
-            {/* 글자들과 같은 좌표계에 두어야 offsetLeft/Top으로 자리를 잡을 수 있다.
-                단어 모드는 다이얼 가운데 칸이 곧 커서 역할을 하므로 두지 않는다. */}
+            {/* 단어 커서는 움직이는 다이얼 안의 글자와 좌표계를 공유한다. */}
             {!isWordMode ? (
               <span className="virtual-cursor" ref={cursorRef} aria-hidden="true" />
             ) : null}
@@ -1978,17 +1988,23 @@ export function TypingWorkspace() {
             autoComplete="off"
             autoCorrect="off"
             autoCapitalize="off"
+            onSelect={() => {
+              if (settings.overlayMode) setCursorMeasureTick((tick) => tick + 1);
+            }}
             onChange={(event) => {
               if (discardImeCommitRef.current) {
                 event.currentTarget.value = "";
                 setInput("");
                 return;
               }
-              const nextValue = event.currentTarget.value;
-              const submissionValue = virtualSpaceSubmissionValue(
-                nextValue,
-                (candidate) => alignInput(targetText, candidate, effectiveSettings).isComplete,
-              );
+              const field = event.currentTarget;
+              const nextValue = field.value;
+              const submissionValue = field.selectionStart === nextValue.length && field.selectionEnd === nextValue.length
+                ? virtualSpaceSubmissionValue(
+                  nextValue,
+                  (candidate) => alignInput(targetText, candidate, effectiveSettings).isComplete,
+                )
+                : null;
               if (submissionValue !== null) {
                 event.currentTarget.value = submissionValue;
                 if (!isScripture) {
@@ -2045,7 +2061,9 @@ export function TypingWorkspace() {
                   }
                 }
               }
-              if (shouldSubmitTypingKey(event.key, canComplete, isImeComposing)) {
+              const field = event.currentTarget;
+              const atInputEnd = field.selectionStart === field.value.length && field.selectionEnd === field.value.length;
+              if (shouldSubmitTypingKey(event.key, canComplete && (event.key !== " " || atInputEnd), isImeComposing)) {
                 event.preventDefault();
                 if (isImeComposing) {
                   discardImeCommitRef.current = true;

@@ -1,5 +1,10 @@
+import { randomUUID } from "node:crypto";
+
 /** @type {import("next").NextConfig} */
 const nextConfig = {
+  env: {
+    NEXT_PUBLIC_TYPENEWS_BUILD_VERSION: process.env.VERCEL_DEPLOYMENT_ID || randomUUID(),
+  },
   turbopack: {
     root: process.cwd(),
   },

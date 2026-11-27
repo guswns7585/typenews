@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Analytics } from "@vercel/analytics/next";
 import { HangulDayFavicon } from "@/components/brand/hangul-day-favicon";
+import { DeploymentUpdateNotice } from "@/components/layout/deployment-update-notice";
 import "pretendard-jp/dist/web/variable/pretendardvariable-jp-dynamic-subset.css";
 import "@fontsource/gowun-batang/400.css";
 import "@fontsource/gowun-batang/700.css";
@@ -47,6 +48,7 @@ export default function RootLayout({
       <body>
         <HangulDayFavicon />
         {children}
+        <DeploymentUpdateNotice />
         <Analytics />
       </body>
     </html>

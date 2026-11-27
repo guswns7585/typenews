@@ -36,6 +36,15 @@ export type Alignment = {
   isComplete: boolean;
 };
 
+/** Translate a textarea's UTF-16 caret offset into the overlay's cell boundary. */
+export function overlayCaretBoundary(alignment: Alignment, input: string, offset: number) {
+  const end = alignment.cursorAfterIndex + 1;
+  if (offset >= input.length) return end;
+  if (offset <= 0) return alignment.inputToTargetMap[0] ?? end;
+  const typedBeforeCaret = Array.from(input.slice(0, offset)).length;
+  return (alignment.inputToTargetMap[typedBeforeCaret - 1] ?? alignment.cursorAfterIndex) + 1;
+}
+
 /**
  * 원본 타입뉴스 `updateHighlight()`의 비교 규칙을 그대로 옮긴 정렬기.
  *
